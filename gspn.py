@@ -4,6 +4,21 @@ import gspn_analysis
 import sparse
 
 
+def find_correct_value(list1, list2, element1, element2):
+    '''
+    We know the elements we want to find on each list and we want to know their index
+    :param list1: list of int
+    :param list2: list of int
+    :param element1: element we want to find on list 1
+    :param element2: element we want to find on list 2
+    :return: index of the elements
+    '''
+    for i in list1:
+        if list1[i] == element1:
+            if list2[i] == element2:
+                return i
+
+
 # TODO: include arc firing with more than one token (for that change fire_transition and get_enabled_transitions)
 class GSPN(object):
     """
@@ -16,8 +31,8 @@ class GSPN(object):
         self.__places = {}
         self.__initial_marking = {}
         self.__transitions = {}
-        self.__arc_in_m = sparse.COO([[],[]], [], shape=(0,0))
-        self.__arc_out_m = sparse.COO([[],[]], [], shape=(0,0))
+        self.__arc_in_m = sparse.COO([[], []], [], shape=(0, 0))
+        self.__arc_out_m = sparse.COO([[], []], [], shape=(0, 0))
         self.__ct_tree = None
         self.__ctmc = None
         self.__ctmc_steady_state = None
@@ -25,10 +40,17 @@ class GSPN(object):
         self.__nsamples = {}
         self.__sum_samples = {}
 
-        self.places_to_index= {}
+        # Mappings that translate x_to_y
+        self.places_to_index = {}
         self.transitions_to_index = {}
         self.index_to_places = {}
         self.index_to_transitions = {}
+
+    def get_arc_in_m(self):
+        return self.__arc_in_m.copy()
+
+    def get_arc_out_m(self):
+        return self.__arc_out_m
 
     def add_places(self, name, ntokens=[], set_initial_marking=True):
         '''
@@ -133,7 +155,7 @@ class GSPN(object):
         len_coords_in = len(self.__arc_in_m.coords[0])
         len_coords_out = len(self.__arc_out_m.coords[0])
 
-        aux_in_list = [[],[]]
+        aux_in_list = [[], []]
         aux_in_list[0] = list(self.__arc_in_m.coords[0])
         aux_in_list[1] = list(self.__arc_in_m.coords[1])
         for place_in, list_transitions_in in arc_in.items():
@@ -142,7 +164,7 @@ class GSPN(object):
                 aux_in_list[1].append(self.transitions_to_index[transition_in])
                 len_coords_in += 1
 
-        aux_out_list = [[],[]]
+        aux_out_list = [[], []]
         aux_out_list[0] = list(self.__arc_out_m.coords[0])
         aux_out_list[1] = list(self.__arc_out_m.coords[1])
         for transition_out, list_places_out in arc_out.items():
@@ -152,8 +174,10 @@ class GSPN(object):
                 len_coords_out += 1
 
         #  Creation of Sparse Matrix
-        self.__arc_in_m = sparse.COO(aux_in_list, np.ones(len_coords_in), shape=(len(self.__places), len(self.__transitions)))
-        self.__arc_out_m = sparse.COO(aux_out_list, np.ones(len_coords_out), shape=(len(self.__transitions), len(self.__places)))
+        self.__arc_in_m = sparse.COO(aux_in_list, np.ones(len_coords_in),
+                                     shape=(len(self.__places), len(self.__transitions)))
+        self.__arc_out_m = sparse.COO(aux_out_list, np.ones(len_coords_out),
+                                      shape=(len(self.__transitions), len(self.__places)))
 
         return self.__arc_in_m, self.__arc_out_m
 
@@ -333,27 +357,41 @@ class GSPN(object):
         return arcs_in, arcs_out
 
     # TODO: FIX THIS METHOD TO TAKE INTO ACCOUNT SPARSE MATRICES
+    # TODO: ALREADY TESTED AND COMPLETED FOR SPARSE MATRICES
     def remove_arc(self, arcs_in=None, arcs_out=None):
         '''
         Method that removes ARCS from Petri Net.
         :param arcs_in: (dict) Dictionary containing all input arcs to be deleted: e.g.  arcs_in[p1]=['t1','t2'], arcs_in[p2]=['t1','t3']
         :param arcs_out: (dict) Dictionary containing output arcs to be deleted: e.g. arcs_out[t1]=['p1','p2'], arcs_out[t2]=['p1','p3']
-        :return:
+        :return: Boolean
         '''
 
         if arcs_in == None and arcs_out == None:
             return False
 
         if arcs_in != None:
-            for place in arcs_in.keys():
+            for place in arcs_in:
+                place_id = self.places_to_index[place]  # This is an int
                 for transition in arcs_in[place]:
-                    self.__arc_in_m.loc[place][transition] = 0
-
+                    transition_id = self.transitions_to_index[transition]  # This is an int
+                    places_list = self.__arc_in_m.coords[0].tolist()
+                    transitions_list = self.__arc_in_m.coords[1].tolist()
+                    value = find_correct_value(places_list, transitions_list, place_id, transition_id)
+                    del places_list[value]
+                    del transitions_list[value]
+                    self.__arc_in_m = sparse.COO([places_list, transitions_list], np.ones(len(places_list)), self.__arc_in_m.shape)
+                    
         if arcs_out != None:
-            for transition in arcs_out.keys():
+            for transition in arcs_out:
+                transition_id = self.transitions_to_index[transition]  # This is an int
                 for place in arcs_out[transition]:
-                    self.__arc_out_m.loc[transition][place] = 0
-
+                    place_id = self.places_to_index[place]  # This is an int
+                    transitions_list = self.__arc_out_m.coords[0].tolist()
+                    places_list = self.__arc_out_m.coords[1].tolist()
+                    value = find_correct_value(places_list, transitions_list, place_id, transition_id)
+                    del places_list[value]
+                    del transitions_list[value]
+                    self.__arc_out_m = sparse.COO([places_list, transitions_list], np.ones(len(places_list)),self.__arc_out_m.shape)
         return True
 
     def get_enabled_transitions(self):
@@ -726,17 +764,11 @@ if __name__ == "__main__":
     arc_out['t3'] = ['p4']
     arc_out['t4'] = ['p3', 'p5']
     a, b = my_pn.add_arcs(arc_in, arc_out)
-    '''
-    print(my_pn.get_enabled_transitions())
-    a = my_pn.get_enabled_transitions()
 
-    print('Places: ', my_pn.get_current_marking(), '\n')
-    print('Trans: ', my_pn.get_transitions(), '\n')
-    arcs_in, arcs_out = my_pn.get_arcs()
-    print('Arcs IN: ', arcs_in, '\n')
-    print('Arcs OUT: ', arcs_out, '\n')
-
-    print(my_pn.add_tokens(['p1', 'p3', 'p5'], [10, 5, 1]))
-
-    print('Places: ', my_pn.get_current_marking(), '\n')
-    '''
+    print("before removing, ", my_pn.get_arc_in_m().coords)
+    print("before removing out", my_pn.get_arc_out_m().coords)
+    my_pn.remove_arc({'p5': ['t1']}, {'t2': ['p5', 'p1']})
+    print("after removing 1, ", my_pn.get_arc_in_m().coords)
+    print("after removing out ", my_pn.get_arc_out_m().coords)
+    my_pn.remove_arc({'p2': ['t2']})
+    print("after removing 2, ", my_pn.get_arc_in_m().coords)
