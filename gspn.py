@@ -255,6 +255,7 @@ class GSPN(object):
         return self.__arc_in_m.copy(), self.__arc_out_m.copy()
 
     # TODO: FIX THIS METHOD TO TAKE INTO ACCOUNT SPARSE MATRICES
+    # TODO: ALREADY TESTED AND COMPLETED FOR SPARSE MATRICES
     def get_arcs_dict(self):
         '''
         Converts the arcs DataFrames to dicts and outputs them.
@@ -266,7 +267,7 @@ class GSPN(object):
                 arcs_in[self.get_arc_in_m().coords[0][iterator]].append(self.get_arc_in_m().coords[1][iterator])
             else:
                 arcs_in[self.get_arc_in_m().coords[0][iterator]] = [self.get_arc_in_m().coords[1][iterator]]
-                
+
         arcs_out = {}
         for iterator in range(len(self.get_arc_out_m().coords[0])):
             if self.get_arc_out_m().coords[0][iterator] in arcs_out:
@@ -277,6 +278,7 @@ class GSPN(object):
         return arcs_in, arcs_out
 
     # TODO: FIX THIS METHOD TO TAKE INTO ACCOUNT SPARSE MATRICES
+    # TODO: ALREADY TESTED AND COMPLETED FOR SPARSE MATRICES
     def get_connected_arcs(self, name, type):
         '''
         Returns input and output arcs connected to a given element (place/transition) of the Petri Net
@@ -289,38 +291,46 @@ class GSPN(object):
             raise NameError
 
         if type == 'place':
+
+            arcs_in_aux, arcs_out_aux = self.get_arcs_dict()
+            place_index = self.places_to_index[name]
+
             arcs_in = {}
-            for transition in self.__arc_in_m.columns:
-                if self.__arc_in_m.loc[name][transition] > 0:
-                    if name in arcs_in:
-                        arcs_in[name].append(transition)
+            for place in arcs_in_aux:
+                if place == place_index:
+                    if place in arcs_in:
+                        arcs_in[place].append(arcs_in_aux[place])
                     else:
-                        arcs_in[name] = [transition]
+                        arcs_in[place] = [arcs_in_aux[place]]
 
             arcs_out = {}
-            for transition in self.__arc_out_m.index:
-                if self.__arc_out_m.loc[transition][name] > 0:
-                    if transition in arcs_out:
-                        arcs_out[transition].append(name)
-                    else:
-                        arcs_out[transition] = [name]
+            for transition in arcs_out_aux:
+                for place in arcs_out_aux[transition]:
+                    if place == place_index:
+                        if transition in arcs_out:
+                            arcs_out[transition].append(place)
+                        else:
+                            arcs_out[transition] = [place]
 
         if type == 'transition':
-            arcs_in = {}
-            for place in self.__arc_in_m.index:
-                if self.__arc_in_m.loc[place][name] > 0:
-                    if place in arcs_in:
-                        arcs_in[place].append(name)
-                    else:
-                        arcs_in[place] = [name]
+            arcs_in_aux, arcs_out_aux = self.get_arcs_dict()
+            transition_index = self.transitions_to_index[name]
 
+            arcs_in = {}
+            for place in arcs_in_aux:
+                for transition in arcs_in_aux[place]:
+                    if transition == transition_index:
+                        if place in arcs_in:
+                            arcs_in[place].append(transition)
+                        else:
+                            arcs_in[place] = [transition]
             arcs_out = {}
-            for place in self.__arc_out_m.columns:
-                if self.__arc_out_m.loc[name][place] > 0:
-                    if name in arcs_out:
-                        arcs_out[name].append(place)
+            for transition in arcs_out_aux:
+                if transition == transition_index:
+                    if transition in arcs_out:
+                        arcs_out[transition].append(arcs_out[transition])
                     else:
-                        arcs_out[name] = [place]
+                        arcs_out[transition] = arcs_out_aux[transition]
 
         return arcs_in, arcs_out
 
@@ -351,9 +361,6 @@ class GSPN(object):
         self.__arc_in_m.drop(columns=transition, inplace=True)
         self.__arc_out_m.drop(index=transition, inplace=True)
 
-
-
-
         self.__transitions.pop(transition)
 
         return arcs_in, arcs_out
@@ -381,7 +388,8 @@ class GSPN(object):
                     value = find_correct_value(places_list, transitions_list, place_id, transition_id)
                     del places_list[value]
                     del transitions_list[value]
-                    self.__arc_in_m = sparse.COO([places_list, transitions_list], np.ones(len(places_list)), self.__arc_in_m.shape)
+                    self.__arc_in_m = sparse.COO([places_list, transitions_list], np.ones(len(places_list)),
+                                                 self.__arc_in_m.shape)
 
         if arcs_out != None:
             for transition in arcs_out:
@@ -393,7 +401,8 @@ class GSPN(object):
                     value = find_correct_value(places_list, transitions_list, place_id, transition_id)
                     del places_list[value]
                     del transitions_list[value]
-                    self.__arc_out_m = sparse.COO([places_list, transitions_list], np.ones(len(places_list)),self.__arc_out_m.shape)
+                    self.__arc_out_m = sparse.COO([places_list, transitions_list], np.ones(len(places_list)),
+                                                  self.__arc_out_m.shape)
         return True
 
     def get_enabled_transitions(self):
@@ -770,3 +779,6 @@ if __name__ == "__main__":
     print("get Arc in, ", my_pn.get_arc_in_m().coords)
     print("get Arc out", my_pn.get_arc_out_m().coords)
     print("arcs dict", my_pn.get_arcs_dict())
+
+    print("connected arcs of p3", my_pn.get_connected_arcs('p3', 'place'))
+    print("connected arcs of t1", my_pn.get_connected_arcs('t1', 'transition'))
