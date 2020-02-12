@@ -261,22 +261,18 @@ class GSPN(object):
         :return: arcs in dict form
         '''
         arcs_in = {}
-        for place in self.__arc_in_m.index:
-            for transition in self.__arc_in_m.columns:
-                if self.__arc_in_m.loc[place][transition] > 0:
-                    if place in arcs_in:
-                        arcs_in[place].append(transition)
-                    else:
-                        arcs_in[place] = [transition]
-
+        for iterator in range(len(self.get_arc_in_m().coords[0])):
+            if self.get_arc_in_m().coords[0][iterator] in arcs_in:
+                arcs_in[self.get_arc_in_m().coords[0][iterator]].append(self.get_arc_in_m().coords[1][iterator])
+            else:
+                arcs_in[self.get_arc_in_m().coords[0][iterator]] = [self.get_arc_in_m().coords[1][iterator]]
+                
         arcs_out = {}
-        for place in self.__arc_out_m.columns:
-            for transition in self.__arc_out_m.index:
-                if self.__arc_out_m.loc[transition][place] > 0:
-                    if transition in arcs_out:
-                        arcs_out[transition].append(place)
-                    else:
-                        arcs_out[transition] = [place]
+        for iterator in range(len(self.get_arc_out_m().coords[0])):
+            if self.get_arc_out_m().coords[0][iterator] in arcs_out:
+                arcs_out[self.get_arc_out_m().coords[0][iterator]].append(self.get_arc_out_m().coords[1][iterator])
+            else:
+                arcs_out[self.get_arc_out_m().coords[0][iterator]] = [self.get_arc_out_m().coords[1][iterator]]
 
         return arcs_in, arcs_out
 
@@ -349,9 +345,15 @@ class GSPN(object):
         :param transition:(str) Name of the transition to be removed
         :return: (dict)(dict) Dictionaries containing input and output arcs connected to the removed transition
         '''
+        transition_id = self.transitions_to_index[transition]
+
         arcs_in, arcs_out = self.get_connected_arcs(transition, 'transition')
         self.__arc_in_m.drop(columns=transition, inplace=True)
         self.__arc_out_m.drop(index=transition, inplace=True)
+
+
+
+
         self.__transitions.pop(transition)
 
         return arcs_in, arcs_out
@@ -380,7 +382,7 @@ class GSPN(object):
                     del places_list[value]
                     del transitions_list[value]
                     self.__arc_in_m = sparse.COO([places_list, transitions_list], np.ones(len(places_list)), self.__arc_in_m.shape)
-                    
+
         if arcs_out != None:
             for transition in arcs_out:
                 transition_id = self.transitions_to_index[transition]  # This is an int
@@ -765,10 +767,6 @@ if __name__ == "__main__":
     arc_out['t4'] = ['p3', 'p5']
     a, b = my_pn.add_arcs(arc_in, arc_out)
 
-    print("before removing, ", my_pn.get_arc_in_m().coords)
-    print("before removing out", my_pn.get_arc_out_m().coords)
-    my_pn.remove_arc({'p5': ['t1']}, {'t2': ['p5', 'p1']})
-    print("after removing 1, ", my_pn.get_arc_in_m().coords)
-    print("after removing out ", my_pn.get_arc_out_m().coords)
-    my_pn.remove_arc({'p2': ['t2']})
-    print("after removing 2, ", my_pn.get_arc_in_m().coords)
+    print("get Arc in, ", my_pn.get_arc_in_m().coords)
+    print("get Arc out", my_pn.get_arc_out_m().coords)
+    print("arcs dict", my_pn.get_arcs_dict())
