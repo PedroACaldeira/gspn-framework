@@ -1,5 +1,8 @@
 import gspn as pn
 import gspn_tools as tools
+import logging
+import threading
+import time
 
 '''
 __places_with_token_list is essentially a dictionary where the key is the name of the place and the value is a list
@@ -29,11 +32,16 @@ class GSPNexecution(object):
         self.__policy = policy
         self.__path_file = path_file
 
+        self.__set_of_threads = list()
+
     def get_places_with_token_list(self):
         return self.__places_with_token_list
 
     def get_token_states(self):
         return self.__token_states
+
+    def decide_function_to_execute(self):
+        return True
 
     def setup_execution(self):
 
@@ -57,8 +65,13 @@ class GSPNexecution(object):
                     self.__places_with_token_list[place].append(id_counter)
                     id_counter = id_counter + 1
                     i = i + 1
-        else:
-            return True
+
+        # Setup threads: 1 for each initial token (1 for each robot)
+        for index in range(len(self.__token_states)):
+            print("Setup execution: create and start thread %d.", index)
+            x = threading.Thread(target=self.decide_function_to_execute)
+            self.__set_of_threads.append(x)
+            x.start()
 
     @staticmethod
     def make_executable(gspn):
