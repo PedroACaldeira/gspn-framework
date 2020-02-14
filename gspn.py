@@ -52,6 +52,9 @@ class GSPN(object):
     def get_arc_out_m(self):
         return self.__arc_out_m
 
+    def get_places(self):
+        return self.__places
+
     def add_places(self, name, ntokens=[], set_initial_marking=True):
         '''
         Adds new places to the existing ones in the GSPN object. Replaces the ones with the same name.
@@ -335,6 +338,7 @@ class GSPN(object):
         return arcs_in, arcs_out
 
     # TODO: FIX THIS METHOD TO TAKE INTO ACCOUNT SPARSE MATRICES
+    # TODO: ALREADY TESTED AND COMPLETED FOR SPARSE MATRICES
     def remove_place(self, place):
         '''
         Method that removes PLACE from Petri Net, with corresponding connected input and output arcs
@@ -380,12 +384,35 @@ class GSPN(object):
         :param transition:(str) Name of the transition to be removed
         :return: (dict)(dict) Dictionaries containing input and output arcs connected to the removed transition
         '''
+        arcs_in, arcs_out = self.get_connected_arcs(transition, 'transition')
         transition_id = self.transitions_to_index[transition]
 
-        arcs_in, arcs_out = self.get_connected_arcs(transition, 'transition')
-        self.__arc_in_m.drop(columns=transition, inplace=True)
-        self.__arc_out_m.drop(index=transition, inplace=True)
+        # removing transition from arc_in
+        places_list = self.__arc_in_m.coords[0].tolist()
+        transitions_list = self.__arc_in_m.coords[1].tolist()
+        iterator = len(transitions_list) - 1
+        while iterator >= 0:
+            if transitions_list[iterator] == transition_id:
+                del transitions_list[iterator]
+                del places_list[iterator]
+            iterator = iterator - 1
+        # creating new sparse for arc_in
+        self.__arc_in_m = sparse.COO([places_list, transitions_list], np.ones(len(places_list)),
+                                     self.__arc_in_m.shape)
 
+        # removing transition from arc_out
+        transitions_list = self.__arc_out_m.coords[0].tolist()
+        places_list = self.__arc_out_m.coords[1].tolist()
+        iterator = len(transitions_list) - 1
+        while iterator >= 0:
+            if transitions_list[iterator] == transition_id:
+                del transitions_list[iterator]
+                del places_list[iterator]
+            iterator = iterator - 1
+        # creating new sparse for arc_out
+        self.__arc_out_m = sparse.COO([transitions_list, places_list], np.ones(len(places_list)),
+                                     self.__arc_out_m.shape)
+        # removing transition from __transitions
         self.__transitions.pop(transition)
 
         return arcs_in, arcs_out
@@ -812,5 +839,10 @@ if __name__ == "__main__":
     print("get Arc in, ", my_pn.get_arc_in_m().coords)
     print("get Arc out", my_pn.get_arc_out_m().coords)
     my_pn.remove_place('p1')
+    my_pn.remove_place('p2')
+    my_pn.remove_place('p5')
+    my_pn.remove_transition('t3')
     print("arc in boy", my_pn.get_arc_in_m().coords)
     print("arc out boy", my_pn.get_arc_out_m().coords)
+    print("places", my_pn.get_places())
+    print("transitions", my_pn.get_transitions())
