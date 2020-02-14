@@ -342,10 +342,35 @@ class GSPN(object):
         :return: (dict)(dict) Dictionaries containing input and output arcs connected to the removed place
         '''
         arcs_in, arcs_out = self.get_connected_arcs(place, 'place')
-        self.__arc_in_m.drop(index=place, inplace=True)
-        self.__arc_out_m.drop(columns=place, inplace=True)
-        self.__places.pop(place)
+        place_id = self.places_to_index[place]
 
+        # removing place from arc_in
+        places_list = self.__arc_in_m.coords[0].tolist()
+        transitions_list = self.__arc_in_m.coords[1].tolist()
+        iterator = len(places_list) - 1
+        while iterator >= 0:
+            if places_list[iterator] == place_id:
+                del places_list[iterator]
+                del transitions_list[iterator]
+            iterator = iterator - 1
+        # creating new sparse for arc_in
+        self.__arc_in_m = sparse.COO([places_list, transitions_list], np.ones(len(places_list)),
+                                     self.__arc_in_m.shape)
+
+        # removing place from arc_out
+        transitions_list = self.__arc_out_m.coords[0].tolist()
+        places_list = self.__arc_out_m.coords[1].tolist()
+        iterator = len(places_list) - 1
+        while iterator >= 0:
+            if places_list[iterator] == place_id:
+                del transitions_list[iterator]
+                del places_list[iterator]
+            iterator = iterator - 1
+        # creating new sparse for arc_out
+        self.__arc_out_m = sparse.COO([transitions_list, places_list], np.ones(len(places_list)),
+                                      self.__arc_out_m.shape)
+        # removing place from __places
+        self.__places.pop(place)
         return arcs_in, arcs_out
 
     # TODO: FIX THIS METHOD TO TAKE INTO ACCOUNT SPARSE MATRICES
@@ -758,27 +783,34 @@ class GSPN(object):
 if __name__ == "__main__":
     # create a generalized stochastic petri net structure
     my_pn = GSPN()
+
     places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5'], [1, 0, 1, 0, 1])
-
     trans = my_pn.add_transitions(['t1', 't2', 't3', 't4'], ['exp', 'exp', 'exp', 'exp'], [1, 1, 0.5, 0.5])
-
     arc_in = {}
     arc_in['p1'] = ['t1']
     arc_in['p2'] = ['t2']
     arc_in['p3'] = ['t3']
     arc_in['p4'] = ['t4']
     arc_in['p5'] = ['t1', 't3']
-
     arc_out = {}
     arc_out['t1'] = ['p2']
     arc_out['t2'] = ['p5', 'p1']
     arc_out['t3'] = ['p4']
     arc_out['t4'] = ['p3', 'p5']
     a, b = my_pn.add_arcs(arc_in, arc_out)
+    '''
+    places = my_pn.add_places(['p1', 'p2'], [1,1])
+    trans = my_pn.add_transitions(['t1'], ['exp'], [1])
+    arc_in = {}
+    arc_in['p1'] = ['t1']
+    arc_out = {}
+    arc_out['t1'] = ['p2']
+    a, b = my_pn.add_arcs(arc_in, arc_out)
+'''
+
 
     print("get Arc in, ", my_pn.get_arc_in_m().coords)
     print("get Arc out", my_pn.get_arc_out_m().coords)
-    print("arcs dict", my_pn.get_arcs_dict())
-
-    print("connected arcs of p3", my_pn.get_connected_arcs('p3', 'place'))
-    print("connected arcs of t1", my_pn.get_connected_arcs('t1', 'transition'))
+    my_pn.remove_place('p1')
+    print("arc in boy", my_pn.get_arc_in_m().coords)
+    print("arc out boy", my_pn.get_arc_out_m().coords)
