@@ -55,6 +55,12 @@ class GSPN(object):
     def get_places(self):
         return self.__places
 
+    def get_number_of_tokens(self):
+        total = 0
+        for place in self.__places:
+            total = total + self.__places[place]
+        return total
+
     def add_places(self, name, ntokens=[], set_initial_marking=True):
         '''
         Adds new places to the existing ones in the GSPN object. Replaces the ones with the same name.
@@ -834,15 +840,6 @@ if __name__ == "__main__":
     arc_out['t1'] = ['p2']
     a, b = my_pn.add_arcs(arc_in, arc_out)
 '''
-
-
     print("get Arc in, ", my_pn.get_arc_in_m().coords)
     print("get Arc out", my_pn.get_arc_out_m().coords)
-    my_pn.remove_place('p1')
-    my_pn.remove_place('p2')
-    my_pn.remove_place('p5')
-    my_pn.remove_transition('t3')
-    print("arc in boy", my_pn.get_arc_in_m().coords)
-    print("arc out boy", my_pn.get_arc_out_m().coords)
-    print("places", my_pn.get_places())
-    print("transitions", my_pn.get_transitions())
+    print("current marking", my_pn.get_current_marking())
