@@ -3,31 +3,34 @@ import gspn_tools as tools
 import logging
 import threading
 import time
+import inspect
 
 '''
 __places_with_token_list is essentially a dictionary where the key is the name of the place and the value is a list
 of tokens that are in that place. This value can be randomly assigned by the user or not.
 __initial_marking_dictionary has the same structure of __places_with_token_list and is only used to know how the initial 
 marking looks like.
-__token_states is a list with the states of each token ['FREE', 'OCCUPIED', 'DONE'] means that token 1 is Free, token 2
+__token_states is a list with the states of each token ['Free', 'Occupied', 'Done'] means that token 1 is Free, token 2
 is Occupied and token 3 is Done. 
 '''
 
 
 class GSPNexecution(object):
 
-    def __init__(self, gspn, function_place_mapping, output_transition_mapping, policy, path_file, places_with_token_list=False):
+    def __init__(self, gspn, place_to_function_mapping, output_to_transition_mapping, policy, path_file,
+                 places_with_token_list=False):
         '''
         :param gspn: a previously created gspn
         :param places_with_token_list: dictionary where the key is the name of the place and the value is a list
                                        of tokens that are in that place.
+        :param place_to_function_mapping: dictionary where key is the place and the value is the function
         '''
         self.__gspn = gspn
         self.__places_with_token_list = places_with_token_list
         self.__token_states = []
 
-        self.__function_place_mapping = function_place_mapping
-        self.__output_transition_mapping = output_transition_mapping
+        self.__place_to_function_mapping = place_to_function_mapping
+        self.__output_to_transition_mapping = output_to_transition_mapping
 
         self.__policy = policy
         self.__path_file = path_file
@@ -40,8 +43,35 @@ class GSPNexecution(object):
     def get_token_states(self):
         return self.__token_states
 
+    def get_path(self):
+        return self.__path_file
+
+    def look_for_token(self, id):
+        '''
+        :param id: int that represents the id of the desired token
+        :return: string that represents the place where the token is. Returns false if error.
+        '''
+        for place in self.__places_with_token_list:
+            for token in self.__places_with_token_list[place]:
+                if token == id:
+                    return place
+        return False
+
     def decide_function_to_execute(self):
-        return True
+        for thread_number in range(len(self.__set_of_threads)):
+            if self.__token_states[thread_number] == 'Free':
+                print("I am free", thread_number + 1)
+                place = self.look_for_token(thread_number + 1)
+                function_to_execute = self.__place_to_function_mapping[place]
+                self.__set_of_threads[thread_number] = threading.Thread(target=function_to_execute)
+                self.__set_of_threads[thread_number].start()
+                self.__set_of_threads[thread_number].join()
+
+            elif self.__token_states[thread_number] == 'Occupied':
+                print("I am occupied", thread_number)
+
+            elif self.__token_states[thread_number] == 'Done':
+                print("I am done", thread_number)
 
     def setup_execution(self):
 
@@ -69,9 +99,20 @@ class GSPNexecution(object):
         # Setup threads: 1 for each initial token (1 for each robot)
         for index in range(len(self.__token_states)):
             print("Setup execution: create and start thread %d.", index)
-            x = threading.Thread(target=self.decide_function_to_execute)
+            x = threading.Thread()
             self.__set_of_threads.append(x)
             x.start()
+
+        # Setup functions that will be executed
+        path_name = self.get_path()
+
+    def execute_plan(self):
+        # I should decide what the stopping condition will be.
+        # Stopping condition idea: while there are enabled transitions
+        counter = 0
+        while counter != 1:
+            self.decide_function_to_execute()
+            counter = counter + 1
 
     @staticmethod
     def make_executable(gspn):
@@ -125,7 +166,12 @@ arc_out['t3'] = ['p4']
 arc_out['t4'] = ['p3', 'p5']
 a, b = my_pn.add_arcs(arc_in, arc_out)
 
-my_execution = GSPNexecution(my_pn, True, True, True, True)
-my_execution.setup_execution()
-print("tokens", my_execution.get_token_states())
+import functions
 
+p_to_f_mapping = {'p1': functions.count_Number, 'p2': functions.execute_nu, 'p3': functions.make_list, 'p4': functions.make_pol, 'p5': functions.execute_pol}
+my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, True, True)
+my_execution.setup_execution()
+print("dict", my_execution.get_places_with_token_list())
+
+my_execution.execute_plan()
+print("tokens", my_execution.get_token_states())

@@ -384,6 +384,7 @@ class GSPN(object):
         return arcs_in, arcs_out
 
     # TODO: FIX THIS METHOD TO TAKE INTO ACCOUNT SPARSE MATRICES
+    # TODO: ALREADY TESTED AND COMPLETED FOR SPARSE MATRICES
     def remove_transition(self, transition):
         '''
         Method that removes TRANSITION from Petri Net, with corresponding input and output arcs
