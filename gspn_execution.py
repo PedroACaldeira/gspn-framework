@@ -79,10 +79,28 @@ class GSPNexecution(object):
         for thread_number in range(len(self.__set_of_threads)):
             if self.__token_states[thread_number] == 'Free':
                 place = self.look_for_token(thread_number + 1)
-                function_location = self.__place_to_function_mapping[place].split(".")[0]
-                function_name = self.__place_to_function_mapping[place].split(".")[1]
-                module_to_exec = __import__(function_location)
-                function_to_exec = getattr(module_to_exec, function_name)
+                splitted_path = self.__place_to_function_mapping[place].split(".")
+
+                # On the first case we have path = FILE.FUNCTION
+                if len(splitted_path) <= 2:
+                    function_location = splitted_path[0]
+                    function_name = splitted_path[1]
+                    module_to_exec = __import__(function_location)
+                    function_to_exec = getattr(module_to_exec, function_name)
+
+                # On the second case we have path = FOLDER. ... . FILE.FUNCTION
+                else:
+                    new_path = splitted_path[0]
+                    for element in splitted_path[1:]:
+                        if element != splitted_path[-1]:
+                            new_path = new_path + "." + element
+                    print(new_path)
+
+                    function_location = new_path
+                    function_name = splitted_path[-1]
+                    module_to_exec = __import__(function_location, fromlist=[function_name])
+                    function_to_exec = getattr(module_to_exec, function_name)
+
                 self.__token_states[thread_number] = 'Occupied'
                 self.__set_of_threads[thread_number] = threading.Thread(target=function_to_exec())
                 self.__set_of_threads[thread_number].start()
@@ -199,7 +217,7 @@ arc_out['t3'] = ['p3']
 a, b = my_pn.add_arcs(arc_in, arc_out)
 
 project_path = "C:/Users/calde/Desktop/ROBOT"
-p_to_f_mapping = {'p1': 'functions.count_Number', 'p2': 'functions.execute_nu', 'p3': 'functions2.make_list'}
+p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.execute_nu', 'p3': 'functions2.make_list'}
 
 my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, True, project_path)
 my_execution.setup_execution()
