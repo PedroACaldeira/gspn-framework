@@ -1,3 +1,5 @@
+from concurrent.futures.thread import ThreadPoolExecutor
+
 import gspn as pn
 import gspn_tools as tools
 import logging
@@ -8,6 +10,8 @@ import sys
 import time
 import inspect
 import importlib
+from concurrent import futures
+import threading
 
 '''
 __places_with_token_list is essentially a dictionary where the key is the name of the place and the value is a list
@@ -76,45 +80,48 @@ class GSPNexecution(object):
         return False
 
     def decide_function_to_execute(self):
-        for thread_number in range(len(self.__set_of_threads)):
-            if self.__token_states[thread_number] == 'Free':
-                place = self.look_for_token(thread_number + 1)
-                splitted_path = self.__place_to_function_mapping[place].split(".")
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            number_tokens = self.__gspn.get_number_of_tokens()
+            for thread_number in range(number_tokens):
+                if self.__token_states[thread_number] == 'Free':
+                    place = self.look_for_token(thread_number + 1)
+                    splitted_path = self.__place_to_function_mapping[place].split(".")
+                    # On the first case we have path = FILE.FUNCTION
+                    if len(splitted_path) <= 2:
+                        function_location = splitted_path[0]
+                        function_name = splitted_path[1]
+                        module_to_exec = __import__(function_location)
+                        function_to_exec = getattr(module_to_exec, function_name)
 
-                # On the first case we have path = FILE.FUNCTION
-                if len(splitted_path) <= 2:
-                    function_location = splitted_path[0]
-                    function_name = splitted_path[1]
-                    module_to_exec = __import__(function_location)
-                    function_to_exec = getattr(module_to_exec, function_name)
+                    # On the second case we have path = FOLDER. ... . FILE.FUNCTION
+                    else:
+                        new_path = splitted_path[0]
+                        for element in splitted_path[1:]:
+                            if element != splitted_path[-1]:
+                                new_path = new_path + "." + element
 
-                # On the second case we have path = FOLDER. ... . FILE.FUNCTION
-                else:
-                    new_path = splitted_path[0]
-                    for element in splitted_path[1:]:
-                        if element != splitted_path[-1]:
-                            new_path = new_path + "." + element
-                    print(new_path)
+                        function_location = new_path
+                        function_name = splitted_path[-1]
+                        module_to_exec = __import__(function_location, fromlist=[function_name])
+                        function_to_exec = getattr(module_to_exec, function_name)
 
-                    function_location = new_path
-                    function_name = splitted_path[-1]
-                    module_to_exec = __import__(function_location, fromlist=[function_name])
-                    function_to_exec = getattr(module_to_exec, function_name)
+                    self.__token_states[thread_number] = 'Occupied'
+                    future = executor.submit(function_to_exec, thread_number)
+                    '''
+                    self.__set_of_threads[thread_number] = threading.Thread(target=function_to_exec())
+                    self.__set_of_threads[thread_number].start()
+                    self.__set_of_threads[thread_number].join()
+                    '''
+                    self.__token_states[thread_number] = 'Done'
 
-                self.__token_states[thread_number] = 'Occupied'
-                self.__set_of_threads[thread_number] = threading.Thread(target=function_to_exec())
-                self.__set_of_threads[thread_number].start()
-                self.__set_of_threads[thread_number].join()
-                self.__token_states[thread_number] = 'Done'
+                elif self.__token_states[thread_number] == 'Occupied':
+                    print("I am occupied", thread_number + 1)
+                    continue
 
-            elif self.__token_states[thread_number] == 'Occupied':
-                print("I am occupied", thread_number + 1)
-                continue
-
-            elif self.__token_states[thread_number] == 'Done':
-                print("I am done", thread_number + 1)
-                self.apply_policy()
-                self.__token_states[thread_number] = 'Free'
+                elif self.__token_states[thread_number] == 'Done':
+                    print("I am done", thread_number + 1)
+                    self.apply_policy()
+                    self.__token_states[thread_number] = 'Free'
 
     def setup_execution(self):
 
@@ -138,14 +145,14 @@ class GSPNexecution(object):
                     self.__places_with_token_list[place].append(id_counter)
                     id_counter = id_counter + 1
                     i = i + 1
-
-        # Setup threads: 1 for each initial token (1 for each robot)
+        '''
+        WITH SIMPLE THREADS
         for index in range(len(self.__token_states)):
             print("Setup execution: create and start thread %d.", index)
             x = threading.Thread()
             self.__set_of_threads.append(x)
             x.start()
-
+        '''
         # Setup project path
         path_name = self.get_path()
         self.__project_path = os.path.join(path_name)
