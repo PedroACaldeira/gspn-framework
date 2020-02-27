@@ -11,13 +11,10 @@ import time
 import inspect
 import importlib
 from concurrent import futures
-import threading
 
 '''
 __places_with_token_list is essentially a dictionary where the key is the name of the place and the value is a list
 of tokens that are in that place. This value can be randomly assigned by the user or not.
-__initial_marking_dictionary has the same structure of __places_with_token_list and is only used to know how the initial 
-marking looks like.
 __token_states is a list with the states of each token ['Free', 'Occupied', 'Done'] means that token 1 is Free, token 2
 is Occupied and token 3 is Done. 
 '''
@@ -43,13 +40,13 @@ class GSPNexecution(object):
         self.__places_with_token_list = places_with_token_list
         self.__token_states = []
 
-        self.__modules = []
         self.__place_to_function_mapping = place_to_function_mapping
         self.__output_to_transition_mapping = output_to_transition_mapping
 
         self.__policy = policy
         self.__project_path = project_path
 
+        self.__number_of_tokens = 0
         self.__set_of_threads = list()
 
     def get_places_with_token_list(self):
@@ -80,12 +77,13 @@ class GSPNexecution(object):
         return False
 
     def decide_function_to_execute(self):
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=self.__number_of_tokens) as executor:
             number_tokens = self.__gspn.get_number_of_tokens()
             for thread_number in range(number_tokens):
                 if self.__token_states[thread_number] == 'Free':
                     place = self.look_for_token(thread_number + 1)
                     splitted_path = self.__place_to_function_mapping[place].split(".")
+
                     # On the first case we have path = FILE.FUNCTION
                     if len(splitted_path) <= 2:
                         function_location = splitted_path[0]
@@ -159,19 +157,14 @@ class GSPNexecution(object):
         sys.path.append(self.__project_path)
         print(self.__project_path)
 
-        # Setup functions that will be executed
-        path_name = self.get_path()
-        for place in self.__place_to_function_mapping:
-            file = self.__place_to_function_mapping[place].split(".")[0]
-            module = importlib.import_module(file, package=None)
-            if module not in self.__modules:
-                self.__modules.append(module)
+        # Setup number of (initial) tokens
+        self.__number_of_tokens = len(self.__token_states)
 
     def execute_plan(self):
         # I should decide what the stopping condition will be.
         # Stopping condition idea: while there are enabled transitions
         counter = 0
-        while counter != 1:
+        while counter != 2:
             self.decide_function_to_execute()
             counter = counter + 1
 
