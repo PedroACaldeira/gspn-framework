@@ -1,16 +1,9 @@
 from concurrent.futures.thread import ThreadPoolExecutor
-
 import gspn as pn
 import gspn_tools as tools
-import logging
-import threading
-from pathlib import Path
 import os
 import sys
-import time
-import inspect
-import importlib
-from concurrent import futures
+import policy
 
 '''
 __places_with_token_list is essentially a dictionary where the key is the name of the place and the value is a list
@@ -28,7 +21,7 @@ class GSPNexecution(object):
         :param gspn: a previously created gspn
         :param place_to_function_mapping: dictionary where key is the place and the value is the function
         :param output_to_transition_mapping: dictionary where key is the output and the value is the transition
-        :param policy:
+        :param policy: Policy object
         :param project_path: string with project path
         :param places_with_token_list: dictionary where the key is the name of the place and the value is a list
                                        of tokens that are in that place.
@@ -39,6 +32,7 @@ class GSPNexecution(object):
         self.__gspn = gspn
         self.__places_with_token_list = places_with_token_list
         self.__token_states = []
+        self.__token_positions = []
 
         self.__place_to_function_mapping = place_to_function_mapping
         self.__output_to_transition_mapping = output_to_transition_mapping
@@ -47,7 +41,7 @@ class GSPNexecution(object):
         self.__project_path = project_path
 
         self.__number_of_tokens = 0
-        self.__set_of_threads = list()
+        self.__futures = []
 
     def get_places_with_token_list(self):
         return self.__places_with_token_list
@@ -61,9 +55,52 @@ class GSPNexecution(object):
     def get_policy(self):
         return self.__policy
 
-    def apply_policy(self):
+    def convert_to_tuple(self, marking, order):
+        '''
+        :param marking: dictionary with key= places; value= number of tokens in place
+        :param order: tuple of strings with the order of the marking on the policy
+        :return: tuple with the marking
+        '''
+        marking_list = []
+        for element in order:
+            for key in marking:
+                if element == key:
+                    marking_list.append(marking[key])
+        return tuple(marking_list)
+
+    def get_transitions(self, marking, policy_dictionary):
+        '''
+        :param marking: tuple with the current marking (should already be ordered)
+        :param policy_dictionary: dictionary where key=Transition name; value=probability of transition
+        :return: transition dictionary if marking is in policy_dictionary; False otherwise
+        '''
+        for mark in policy_dictionary:
+            if marking == mark:
+                return policy_dictionary[mark]
+        return False
+
+    def fire_execution(self, transition, token_id):
+        arcs = self.__gspn.get_connected_arcs(transition, 'transition')[1]
+        print("arcs", arcs)
+
+        # On this case, we only switch the old place for the new
+        if len(arcs[0]) == 1:
+            new_place = self.__gspn.index_to_places[arcs[0][0]]
+            self.__token_positions[token_id] = new_place
+
+        # On this case, we have more than 1 transition firing, so we need to add elements
+        # TODO: CREATE SECOND CONDITION
+
+    def apply_policy(self, token_id):
         policy = self.get_policy()
-        print("applying policy")
+        current_marking = self.__gspn.get_current_marking()
+        order = policy.get_places_tuple()
+        marking_tuple = self.convert_to_tuple(current_marking, order)
+        pol_dict = policy.get_policy_dictionary()
+        transition_dictionary = self.get_transitions(marking_tuple, pol_dict)
+        for transition in transition_dictionary:
+            self.__gspn.fire_transition(transition)
+            self.fire_execution(transition, token_id)
 
     def look_for_token(self, id):
         '''
@@ -78,48 +115,43 @@ class GSPNexecution(object):
 
     def decide_function_to_execute(self):
         with ThreadPoolExecutor(max_workers=self.__number_of_tokens) as executor:
-            number_tokens = self.__gspn.get_number_of_tokens()
-            for thread_number in range(number_tokens):
-                if self.__token_states[thread_number] == 'Free':
-                    place = self.look_for_token(thread_number + 1)
-                    splitted_path = self.__place_to_function_mapping[place].split(".")
+            while True:
+                number_tokens = self.__gspn.get_number_of_tokens()
+                for thread_number in range(number_tokens):
+                    if self.__token_states[thread_number] == 'Free':
+                        # place = self.look_for_token(thread_number + 1)
+                        place = self.__token_positions[thread_number]
+                        splitted_path = self.__place_to_function_mapping[place].split(".")
 
-                    # On the first case we have path = FILE.FUNCTION
-                    if len(splitted_path) <= 2:
-                        function_location = splitted_path[0]
-                        function_name = splitted_path[1]
-                        module_to_exec = __import__(function_location)
-                        function_to_exec = getattr(module_to_exec, function_name)
+                        # On the first case we have path = FILE.FUNCTION
+                        if len(splitted_path) <= 2:
+                            function_location = splitted_path[0]
+                            function_name = splitted_path[1]
+                            module_to_exec = __import__(function_location)
+                            function_to_exec = getattr(module_to_exec, function_name)
 
-                    # On the second case we have path = FOLDER. ... . FILE.FUNCTION
+                        # On the second case we have path = FOLDER. ... . FILE.FUNCTION
+                        else:
+                            new_path = splitted_path[0]
+                            for element in splitted_path[1:]:
+                                if element != splitted_path[-1]:
+                                    new_path = new_path + "." + element
+
+                            function_location = new_path
+                            function_name = splitted_path[-1]
+                            module_to_exec = __import__(function_location, fromlist=[function_name])
+                            function_to_exec = getattr(module_to_exec, function_name)
+
+                        self.__token_states[thread_number] = 'Occupied'
+                        self.__futures[thread_number] = executor.submit(function_to_exec, thread_number)
+
+                    if self.__futures[thread_number].done():
+                        print("I am occupied and finished the task", thread_number + 1)
+                        self.apply_policy(thread_number)
+                        self.__token_states[thread_number] = 'Free'
+
                     else:
-                        new_path = splitted_path[0]
-                        for element in splitted_path[1:]:
-                            if element != splitted_path[-1]:
-                                new_path = new_path + "." + element
-
-                        function_location = new_path
-                        function_name = splitted_path[-1]
-                        module_to_exec = __import__(function_location, fromlist=[function_name])
-                        function_to_exec = getattr(module_to_exec, function_name)
-
-                    self.__token_states[thread_number] = 'Occupied'
-                    future = executor.submit(function_to_exec, thread_number)
-                    '''
-                    self.__set_of_threads[thread_number] = threading.Thread(target=function_to_exec())
-                    self.__set_of_threads[thread_number].start()
-                    self.__set_of_threads[thread_number].join()
-                    '''
-                    self.__token_states[thread_number] = 'Done'
-
-                elif self.__token_states[thread_number] == 'Occupied':
-                    print("I am occupied", thread_number + 1)
-                    continue
-
-                elif self.__token_states[thread_number] == 'Done':
-                    print("I am done", thread_number + 1)
-                    self.apply_policy()
-                    self.__token_states[thread_number] = 'Free'
+                        continue
 
     def setup_execution(self):
 
@@ -128,7 +160,17 @@ class GSPNexecution(object):
         i = 0
         while i < number_of_tokens:
             self.__token_states.append('Free')
+            self.__futures.append(i)
             i = i + 1
+
+        # Setup token_positions list
+
+        marking = self.__gspn.get_current_marking()
+        for place in marking:
+            j = 0
+            while j != marking[place]:
+                self.__token_positions.append(place)
+                j = j + 1
 
         # Setup places_with_token_list dictionary randomly
         if self.__places_with_token_list == False:
@@ -143,14 +185,7 @@ class GSPNexecution(object):
                     self.__places_with_token_list[place].append(id_counter)
                     id_counter = id_counter + 1
                     i = i + 1
-        '''
-        WITH SIMPLE THREADS
-        for index in range(len(self.__token_states)):
-            print("Setup execution: create and start thread %d.", index)
-            x = threading.Thread()
-            self.__set_of_threads.append(x)
-            x.start()
-        '''
+
         # Setup project path
         path_name = self.get_path()
         self.__project_path = os.path.join(path_name)
@@ -159,14 +194,6 @@ class GSPNexecution(object):
 
         # Setup number of (initial) tokens
         self.__number_of_tokens = len(self.__token_states)
-
-    def execute_plan(self):
-        # I should decide what the stopping condition will be.
-        # Stopping condition idea: while there are enabled transitions
-        counter = 0
-        while counter != 2:
-            self.decide_function_to_execute()
-            counter = counter + 1
 
     @staticmethod
     def make_executable(gspn):
@@ -216,18 +243,17 @@ arc_out['t2'] = ['p3']
 arc_out['t3'] = ['p3']
 a, b = my_pn.add_arcs(arc_in, arc_out)
 
+places_tup = ('p1', 'p2', 'p3')
+policy_dict = {(3, 1, 0): {'t1': 1}}
+policy = policy.Policy(places_tup, policy_dict)
+
 project_path = "C:/Users/calde/Desktop/ROBOT"
 p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.execute_nu', 'p3': 'functions2.make_list'}
 
-my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, True, project_path)
+my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
 my_execution.setup_execution()
-my_execution.execute_plan()
+my_execution.decide_function_to_execute()
 '''
-basepath = Path(root)
-for entry in basepath.iterdir():
-    if entry.is_dir():
-        print(entry.name)
-
 places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5'], [3, 1, 0, 5, 2])
 trans = my_pn.add_transitions(['t1', 't2', 't3', 't4'], ['exp', 'exp', 'exp', 'exp'], [1, 1, 0.5, 0.5])
 arc_in = {}
