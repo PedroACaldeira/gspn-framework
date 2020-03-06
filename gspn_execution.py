@@ -97,8 +97,6 @@ class GSPNexecution(object):
     def apply_policy(self, token_id, result):
         print("BEFORE", self.__token_positions, self.__gspn.get_current_marking())
         if result is None:
-            print("immediate transition, I should apply policy")
-
             policy = self.get_policy()
             current_marking = self.__gspn.get_current_marking()
             order = policy.get_places_tuple()
@@ -107,6 +105,7 @@ class GSPNexecution(object):
             transition_dictionary = self.get_transitions(marking_tuple, pol_dict)
 
             if transition_dictionary:
+                print("immediate transition, I should apply policy")
                 transition_list = []
                 probability_list = []
                 for transition in transition_dictionary:
@@ -116,7 +115,7 @@ class GSPNexecution(object):
                 self.fire_execution(transition_to_fire, token_id)
                 self.__gspn.fire_transition(transition_to_fire)
             else:
-                return
+                return -2
 
         else:
             print("exponential transition, I should fire the transition on result")
@@ -155,20 +154,24 @@ class GSPNexecution(object):
                         self.__token_states[thread_number] = 'Occupied'
                         self.__futures[thread_number] = executor.submit(function_to_exec, thread_number)
 
-                    if self.__futures[thread_number].done():
+                    if self.__futures[thread_number].done() and self.__token_states[thread_number] == 'Occupied':
                         self.__token_states[thread_number] = 'Done'
 
                     if self.__token_states[thread_number] == 'Done':
-                        self.apply_policy(thread_number, self.__futures[thread_number].result())
-                        self.__token_states[thread_number] = 'Free'
+                        res_policy = self.apply_policy(thread_number, self.__futures[thread_number].result())
+                        if res_policy == -2:
+                            # This state is achieved when the token reaches a place with no connections.
+                            self.__token_states[thread_number] = 'Inactive'
+                        else:
+                            self.__token_states[thread_number] = 'Free'
                         print("--------")
 
     def setup_execution(self):
 
-        # Setup token_states list
-        number_of_tokens = self.__gspn.get_number_of_tokens()
+        # Setup token_states list and number of (initial) tokens
+        self.__number_of_tokens = self.__gspn.get_number_of_tokens()
         i = 0
-        while i < number_of_tokens:
+        while i < self.__number_of_tokens:
             self.__token_states.append('Free')
             self.__futures.append(i)
             i = i + 1
@@ -186,22 +189,20 @@ class GSPNexecution(object):
         self.__project_path = os.path.join(path_name)
         sys.path.append(self.__project_path)
 
-        # Setup number of (initial) tokens
-        self.__number_of_tokens = len(self.__token_states)
 
 my_pn = pn.GSPN()
-places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5'], [2, 0, 0, 0, 0])
-trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5'], ['exp', 'exp', 'imm', 'imm', 'exp'], [1, 1, 1, 1, 1])
-arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p3': ['t3', 't4'], 'p4': ['t5']}
-arc_out = {'t1': ['p2'], 't2': ['p3'], 't3': ['p4'], 't4': ['p5'], 't5': ['p1', 'p2']}
+places = my_pn.add_places(['p1', 'p2', 'p3'], [2, 0, 0])
+trans = my_pn.add_transitions(['t1', 't2'], ['exp', 'exp'], [1, 1])
+arc_in = {'p1': ['t1'], 'p2': ['t2']}
+arc_out = {'t1': ['p2'], 't2': ['p3']}
 a, b = my_pn.add_arcs(arc_in, arc_out)
 
-places_tup = ('p1', 'p2', 'p3', 'p4', 'p5')
+places_tup = ('p1', 'p2', 'p3')
 policy_dict = {(0, 0, 2, 0, 0): {'t3': 0.5, 't4': 0.5}}
 policy = policy.Policy(places_tup, policy_dict)
 project_path = "C:/Users/calde/Desktop/ROBOT"
 p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number2',
-                  'p3': 'functions2.make_list', 'p4': 'folder.functions.count_Number4', 'p5': 'functions2.do_nothing'}
+                  'p3': 'functions2.make_list'}
 
 my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
 my_execution.setup_execution()
