@@ -28,8 +28,10 @@ class GSPN(object):
         """
 
         """
+        self.__sparse_marking = {}
         self.__places = {}
         self.__initial_marking = {}
+        self.__initial_marking_sparse = {}
         self.__transitions = {}
         self.__arc_in_m = sparse.COO([[], []], [], shape=(0, 0))
         self.__arc_out_m = sparse.COO([[], []], [], shape=(0, 0))
@@ -74,6 +76,8 @@ class GSPN(object):
         for index, place_name in enumerate(name):
             if ntokens:
                 self.__places[place_name] = ntokens[index]
+                if ntokens[index] > 0:
+                    self.__sparse_marking[place_name] = ntokens[index]
             else:
                 self.__places[place_name] = 0
 
@@ -83,6 +87,7 @@ class GSPN(object):
 
         if set_initial_marking:
             self.__initial_marking = self.__places.copy()
+            self.__initial_marking_sparse = self.__sparse_marking.copy()
 
         return self.__places.copy()
 
@@ -91,6 +96,7 @@ class GSPN(object):
 
         if set_initial_marking:
             self.__initial_marking = self.__places.copy()
+            self.__initial_marking_sparse = self.__sparse_marking.copy()
 
         return self.__places.copy()
 
@@ -208,11 +214,17 @@ class GSPN(object):
                 if self.__places[p] != 'w':
                     if tokens_to_add == 'w':
                         self.__places[p] = 'w'
+                        self.__sparse_marking[p] = 'w'
                     else:
                         self.__places[p] = self.__places[p] + tokens_to_add
+                        if p in self.__sparse_marking:
+                            self.__sparse_marking[p] = self.__sparse_marking[p] + tokens_to_add
+                        else:
+                            self.__sparse_marking[p] = 1
 
             if set_initial_marking:
                 self.__initial_marking = self.__places.copy()
+                self.__initial_marking_sparse = self.__initial_marking.copy()
 
             return True
         else:
@@ -236,26 +248,41 @@ class GSPN(object):
                 tokens_to_remove = ntokens.pop()
                 if tokens_to_remove == 'w':
                     self.__places[p] = 0
+                    del self.__sparse_marking[p]
                 else:
                     if self.__places[p] != 'w':
                         self.__places[p] = self.__places[p] - tokens_to_remove
+                        self.__sparse_marking[p] = self.__sparse_marking[p] - tokens_to_remove
+                        if self.__sparse_marking[p] <= 0:
+                            del self.__sparse_marking[p]
 
             if set_initial_marking:
                 self.__initial_marking = self.__places.copy()
+                self.__initial_marking_sparse = self.__sparse_marking.copy()
 
             return True
         else:
             return False
 
-    def get_current_marking(self):
-        return self.__places.copy()
+    def get_current_marking(self, sparse_marking=False):
+        if sparse_marking:
+            return self.__sparse_marking.copy()
+        else:
+            return self.__places.copy()
 
     def set_marking(self, places):
         self.__places = places.copy()
+        self.__sparse_marking = {}
+        for pl, tk in self.__places.items():
+            if tk > 0:
+                self.__sparse_marking[pl] = tk
         return True
 
-    def get_initial_marking(self):
-        return self.__initial_marking.copy()
+    def get_initial_marking(self, sparse_marking=False):
+        if sparse_marking:
+            return self.__initial_marking_sparse.copy()
+        else:
+            return self.__initial_marking.copy()
 
     def get_transitions(self):
         return self.__transitions.copy()
@@ -381,6 +408,9 @@ class GSPN(object):
                                       self.__arc_out_m.shape)
         # removing place from __places
         self.__places.pop(place)
+        if place in self.__sparse_marking:
+            self.__sparse_marking.pop(place)
+
         return arcs_in, arcs_out
 
     # TODO: FIX THIS METHOD TO TAKE INTO ACCOUNT SPARSE MATRICES
@@ -593,12 +623,97 @@ class GSPN(object):
 
         return list(markings)
 
+    def get_state_from_marking(self, marking, states_to_marking):
+        for st, mk in states_to_marking.items():
+            if mk == marking:
+                return st
+
+        return None
+
+    def simulate_policy(self, policy, states_to_marking, partial_policy=True, simulate_wait=False):
+        enabled_exp_transitions, enabled_imm_transitions = self.get_enabled_transitions()
+
+        current_state = self.get_state_from_marking(marking=self.__sparse_marking, states_to_marking=states_to_marking)
+        if current_state in policy:
+            action = policy[current_state]
+        else:
+            action = None
+
+        if action == None:
+            if partial_policy:
+                if enabled_imm_transitions:
+                    weight_sum = sum(enabled_imm_transitions.values())
+                    if weight_sum == 0:
+                        firing_transition = np.random.choice(a=list(enabled_imm_transitions.keys()))
+                    else:
+                        random_switch_id = []
+                        random_switch_prob = []
+                        # normalize the associated probabilities
+                        for key, value in enabled_imm_transitions.items():
+                            random_switch_id.append(key)
+                            random_switch_prob.append(value / weight_sum)
+
+                        # Draw from all enabled immediate transitions
+                        firing_transition = np.random.choice(a=random_switch_id, size=None, p=random_switch_prob)
+
+                    wait_until_fire = 0
+                    # Fire transition
+                    self.fire_transition(firing_transition)
+                elif enabled_exp_transitions:
+                    wait_times = enabled_exp_transitions.copy()
+                    # sample from each exponential distribution prob_dist(x) = lambda * exp(-lambda * x)
+                    # in this case the beta rate parameter is used instead, where beta = 1/lambda
+                    for key, value in enabled_exp_transitions.items():
+                        wait_times[key] = np.random.exponential(scale=(1.0 / value), size=None)
+
+                    firing_transition = min(wait_times, key=wait_times.get)
+                    wait_until_fire = wait_times[firing_transition]
+                    if simulate_wait:
+                        time.sleep(wait_until_fire)
+
+                        # Fire transition
+                    self.fire_transition(firing_transition)
+                else:
+                    raise Exception('Deadlock, there are no enabled transitions in marking: ' + str(self.__sparse_marking))
+            else:
+                raise Exception('Policy not defined for marking: ' + str(self.__sparse_marking))
+        elif action in enabled_imm_transitions:
+            firing_transition = action
+            wait_until_fire = 0
+            self.fire_transition(firing_transition)
+        elif action in ['EXP', 'WAIT']:
+            if enabled_exp_transitions:
+                wait_times = enabled_exp_transitions.copy()
+                # sample from each exponential distribution prob_dist(x) = lambda * exp(-lambda * x)
+                # in this case the beta rate parameter is used instead, where beta = 1/lambda
+                for key, value in enabled_exp_transitions.items():
+                    wait_times[key] = np.random.exponential(scale=(1.0 / value), size=None)
+
+                firing_transition = min(wait_times, key=wait_times.get)
+                wait_until_fire = wait_times[firing_transition]
+                if simulate_wait:
+                    time.sleep(wait_until_fire)
+
+                # Fire transition
+                self.fire_transition(firing_transition)
+            else:
+                raise Exception('Action: '+str(action)+' does not match with any of the enabled exp transitions '
+                                'in the marking: '+str(self.__sparse_marking))
+        else:
+            raise Exception('Action: '+str(action)+' does not match with any enabled transition in the marking: '
+                            +str(self.__sparse_marking))
+
+        # print('Fired transition : ', firing_transition)
+        return firing_transition, wait_until_fire, self.get_current_marking(sparse_marking=False), self.get_current_marking(sparse_marking=True)
+
     def reset_simulation(self):
         self.__places = self.__initial_marking.copy()
+        self.__sparse_marking = self.__initial_marking_sparse.copy()
         return True
 
     def reset(self):
         self.__places = self.__initial_marking.copy()
+        self.__sparse_marking = self.__initial_marking_sparse.copy()
         self.__nsamples = {}
         self.__sum_samples = {}
         return True
