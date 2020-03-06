@@ -85,10 +85,10 @@ class GSPNexecution(object):
             i = 0
             for i in range(len(arcs[1][index])):
                 if i == 0:
-                    new_place = self.__gspn.index_to_places[arcs[1][0][i]]
+                    new_place = self.__gspn.index_to_places[arcs[1][index][i]]
                     self.__token_positions[token_id] = new_place
                 else:
-                    new_place = self.__gspn.index_to_places[arcs[1][0][i]]
+                    new_place = self.__gspn.index_to_places[arcs[1][index][i]]
                     self.__token_positions.append(new_place)
                     self.__token_states.append('Free')
                     self.__number_of_tokens = self.__number_of_tokens + 1
@@ -191,18 +191,18 @@ class GSPNexecution(object):
         self.__number_of_tokens = len(self.__token_states)
 
 my_pn = pn.GSPN()
-places = my_pn.add_places(['p1', 'p2', 'p3'], [1, 0, 0])
-trans = my_pn.add_transitions(['t1', 't2'], ['imm', 'imm'], [1, 1])
-arc_in = {'p1': ['t1', 't2']}
-arc_out = {'t1': ['p2'], 't2': ['p3']}
+places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5'], [2, 0, 0, 0, 0])
+trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5'], ['exp', 'exp', 'imm', 'imm', 'exp'], [1, 1, 1, 1, 1])
+arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p3': ['t3', 't4'], 'p4': ['t5']}
+arc_out = {'t1': ['p2'], 't2': ['p3'], 't3': ['p4'], 't4': ['p5'], 't5': ['p1', 'p2']}
 a, b = my_pn.add_arcs(arc_in, arc_out)
 
-places_tup = ('p1', 'p2', 'p3')
-policy_dict = {(1, 0, 0): {'t1': 0.1, 't2': 0.9}}
+places_tup = ('p1', 'p2', 'p3', 'p4', 'p5')
+policy_dict = {(0, 0, 2, 0, 0): {'t3': 0.5, 't4': 0.5}}
 policy = policy.Policy(places_tup, policy_dict)
 project_path = "C:/Users/calde/Desktop/ROBOT"
-p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.execute_nu',
-                  'p3': 'functions2.make_list'}
+p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number2',
+                  'p3': 'functions2.make_list', 'p4': 'folder.functions.count_Number4', 'p5': 'functions2.do_nothing'}
 
 my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
 my_execution.setup_execution()
