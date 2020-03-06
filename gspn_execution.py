@@ -1,11 +1,9 @@
 from concurrent.futures.thread import ThreadPoolExecutor
 import gspn as pn
-import gspn_tools as tools
 import os
 import sys
 import policy
 import numpy as np
-import gspn_tools
 
 '''
 __token_states is a list with the states of each token ['Free', 'Occupied', 'Done'] means that token 1 is Free, token 2
@@ -75,12 +73,14 @@ class GSPNexecution(object):
     def fire_execution(self, transition, token_id):
         arcs = self.__gspn.get_connected_arcs(transition, 'transition')
         index = self.__gspn.transitions_to_index[transition]
+
         # On this case, we only switch the old place for the new
         if len(arcs[1][index]) == 1:
             new_place = self.__gspn.index_to_places[arcs[1][index][0]]
             self.__token_positions[token_id] = new_place
 
-        # On this case, we have more than 1 transition firing, so we need to add elements
+        # On this case, we have more than 1 transition firing, so we need to add elements to
+        # __token_states and __token_positions
         else:
             i = 0
             for i in range(len(arcs[1][index])):
@@ -174,7 +174,6 @@ class GSPNexecution(object):
             i = i + 1
 
         # Setup token_positions list
-
         marking = self.__gspn.get_current_marking()
         for place in marking:
             j = 0
