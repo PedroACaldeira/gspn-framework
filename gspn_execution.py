@@ -73,7 +73,6 @@ class GSPNexecution(object):
         return False
 
     def fire_execution(self, transition, token_id):
-
         arcs = self.__gspn.get_connected_arcs(transition, 'transition')
         index = self.__gspn.transitions_to_index[transition]
         # On this case, we only switch the old place for the new
@@ -99,6 +98,7 @@ class GSPNexecution(object):
         print("BEFORE", self.__token_positions, self.__gspn.get_current_marking())
         if result is None:
             print("immediate transition, I should apply policy")
+
             policy = self.get_policy()
             current_marking = self.__gspn.get_current_marking()
             order = policy.get_places_tuple()
@@ -112,7 +112,7 @@ class GSPNexecution(object):
                 for transition in transition_dictionary:
                     transition_list.append(transition)
                     probability_list.append(transition_dictionary[transition])
-                transition_to_fire = np.random.choice(transition_list, 1, False, probability_list)
+                transition_to_fire = np.random.choice(transition_list, 1, False, probability_list)[0]
                 self.fire_execution(transition_to_fire, token_id)
                 self.__gspn.fire_transition(transition_to_fire)
             else:
@@ -190,45 +190,15 @@ class GSPNexecution(object):
         # Setup number of (initial) tokens
         self.__number_of_tokens = len(self.__token_states)
 
-
-'''
 my_pn = pn.GSPN()
-places = my_pn.add_places(['p1', 'p2', 'p3', 'p4'], [1, 0, 0, 0])
-trans = my_pn.add_transitions(['t1', 't2'], ['exp', 'exp'], [1, 1])
-arc_in = {}
-arc_in['p1'] = ['t1']
-arc_in['p2'] = ['t2']
-arc_out = {}
-arc_out['t1'] = ['p2', 'p3']
-arc_out['t2'] = ['p4']
-a, b = my_pn.add_arcs(arc_in, arc_out)
-
-places_tup = ('p1', 'p2', 'p3', 'p4')
-policy_dict = {(1, 0, 0, 0): {'t1': 1}, (0, 1, 0, 0): {'t2': 1}}
-policy = policy.Policy(places_tup, policy_dict)
-
-project_path = "C:/Users/calde/Desktop/ROBOT"
-p_to_f_mapping = {'p1': 'functions2.make_list', 'p2': 'folder.functions.execute_nu', 'p3': 'folder.functions.count_Number', 'p4':'folder.functions.execute_nu'}
-
-my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
-my_execution.setup_execution()
-my_execution.decide_function_to_execute()
-'''
-
-my_pn = pn.GSPN()
-places = my_pn.add_places(['p1', 'p2', 'p3'], [2, 0, 0])
-trans = my_pn.add_transitions(['t1', 't2', 't3'], ['exp', 'exp', 'exp'], [1, 1, 1])
-arc_in = {}
-arc_in['p1'] = ['t1', 't2']
-arc_in['p2'] = ['t3']
-arc_out = {}
-arc_out['t1'] = ['p2']
-arc_out['t2'] = ['p3']
-arc_out['t3'] = ['p3']
+places = my_pn.add_places(['p1', 'p2', 'p3'], [1, 0, 0])
+trans = my_pn.add_transitions(['t1', 't2'], ['imm', 'imm'], [1, 1])
+arc_in = {'p1': ['t1', 't2']}
+arc_out = {'t1': ['p2'], 't2': ['p3']}
 a, b = my_pn.add_arcs(arc_in, arc_out)
 
 places_tup = ('p1', 'p2', 'p3')
-policy_dict = {(1, 0, 0): {'t1': 0.1, 't2': 0.9}, (2, 2, 0): {'t1': 1}, (1, 3, 0): {'t1': 1}}
+policy_dict = {(1, 0, 0): {'t1': 0.1, 't2': 0.9}}
 policy = policy.Policy(places_tup, policy_dict)
 project_path = "C:/Users/calde/Desktop/ROBOT"
 p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.execute_nu',
@@ -237,28 +207,3 @@ p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions
 my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
 my_execution.setup_execution()
 my_execution.decide_function_to_execute()
-
-'''
-places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5'], [3, 1, 0, 5, 2])
-trans = my_pn.add_transitions(['t1', 't2', 't3', 't4'], ['exp', 'exp', 'exp', 'exp'], [1, 1, 0.5, 0.5])
-arc_in = {}
-arc_in['p1'] = ['t1']
-arc_in['p2'] = ['t2']
-arc_in['p3'] = ['t3']
-arc_in['p4'] = ['t4']
-arc_in['p5'] = ['t1', 't3']
-arc_out = {}
-arc_out['t1'] = ['p2']
-arc_out['t2'] = ['p5', 'p1']
-arc_out['t3'] = ['p4']
-arc_out['t4'] = ['p3', 'p5']
-a, b = my_pn.add_arcs(arc_in, arc_out)
-
-
-p_to_f_mapping = {'p1': functions.count_Number, 'p2': functions.execute_nu, 'p3': functions.make_list, 'p4': functions.make_pol, 'p5': functions.execute_pol}
-my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, True, True)
-my_execution.setup_execution()
-
-my_execution.execute_plan()
-print("tokens", my_execution.get_token_states())
-'''
