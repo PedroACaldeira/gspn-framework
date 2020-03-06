@@ -77,14 +77,14 @@ class GSPNexecution(object):
         arcs = self.__gspn.get_connected_arcs(transition, 'transition')
         index = self.__gspn.transitions_to_index[transition]
         # On this case, we only switch the old place for the new
-        if len(arcs[1][0]) == 1:
-            new_place = self.__gspn.index_to_places[arcs[1][0][0]]
+        if len(arcs[1][index]) == 1:
+            new_place = self.__gspn.index_to_places[arcs[1][index][0]]
             self.__token_positions[token_id] = new_place
 
         # On this case, we have more than 1 transition firing, so we need to add elements
         else:
             i = 0
-            for i in range(len(arcs[1][0])):
+            for i in range(len(arcs[1][index])):
                 if i == 0:
                     new_place = self.__gspn.index_to_places[arcs[1][0][i]]
                     self.__token_positions[token_id] = new_place
@@ -125,7 +125,7 @@ class GSPNexecution(object):
         print("AFTER", self.__token_positions, self.__gspn.get_current_marking())
 
     def decide_function_to_execute(self):
-        with ThreadPoolExecutor(max_workers=self.__number_of_tokens) as executor:
+        with ThreadPoolExecutor(max_workers=self.__number_of_tokens * 3) as executor:
             while True:
                 number_tokens = self.__gspn.get_number_of_tokens()
                 for thread_number in range(number_tokens):
@@ -156,7 +156,6 @@ class GSPNexecution(object):
                         self.__futures[thread_number] = executor.submit(function_to_exec, thread_number)
 
                     if self.__futures[thread_number].done():
-                        print(thread_number + 1, "Finished the task")
                         self.__token_states[thread_number] = 'Done'
 
                     if self.__token_states[thread_number] == 'Done':
@@ -217,12 +216,15 @@ my_execution.decide_function_to_execute()
 '''
 
 my_pn = pn.GSPN()
-places = my_pn.add_places(['p1', 'p2', 'p3'], [1, 0, 0])
-trans = my_pn.add_transitions(['t1', 't2', 't3'], ['exp', 'exp', 'exp'], [1, 1, 0.5])
+places = my_pn.add_places(['p1', 'p2', 'p3'], [2, 0, 0])
+trans = my_pn.add_transitions(['t1', 't2', 't3'], ['exp', 'exp', 'exp'], [1, 1, 1])
 arc_in = {}
-arc_in['p1'] = ['t1']
+arc_in['p1'] = ['t1', 't2']
+arc_in['p2'] = ['t3']
 arc_out = {}
-arc_out['t1'] = ['p2', 'p3']
+arc_out['t1'] = ['p2']
+arc_out['t2'] = ['p3']
+arc_out['t3'] = ['p3']
 a, b = my_pn.add_arcs(arc_in, arc_out)
 
 places_tup = ('p1', 'p2', 'p3')
