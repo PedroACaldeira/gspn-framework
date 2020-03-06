@@ -4,6 +4,8 @@ import gspn_tools as tools
 import os
 import sys
 import policy
+import numpy as np
+import gspn_tools
 
 '''
 __token_states is a list with the states of each token ['Free', 'Occupied', 'Done'] means that token 1 is Free, token 2
@@ -71,8 +73,9 @@ class GSPNexecution(object):
         return False
 
     def fire_execution(self, transition, token_id):
-        arcs = self.__gspn.get_connected_arcs(transition, 'transition')
 
+        arcs = self.__gspn.get_connected_arcs(transition, 'transition')
+        index = self.__gspn.transitions_to_index[transition]
         # On this case, we only switch the old place for the new
         if len(arcs[1][0]) == 1:
             new_place = self.__gspn.index_to_places[arcs[1][0][0]]
@@ -92,19 +95,34 @@ class GSPNexecution(object):
                     self.__number_of_tokens = self.__number_of_tokens + 1
                     self.__futures.append(self.__number_of_tokens)
 
-    def apply_policy(self, token_id):
-        policy = self.get_policy()
-        current_marking = self.__gspn.get_current_marking()
-        order = policy.get_places_tuple()
-        marking_tuple = self.convert_to_tuple(current_marking, order)
-        pol_dict = policy.get_policy_dictionary()
-        transition_dictionary = self.get_transitions(marking_tuple, pol_dict)
-        if transition_dictionary != False:
-            for transition in transition_dictionary:
-                self.__gspn.fire_transition(transition)
-                self.fire_execution(transition, token_id)
+    def apply_policy(self, token_id, result):
+        print("BEFORE", self.__token_positions, self.__gspn.get_current_marking())
+        if result is None:
+            print("immediate transition, I should apply policy")
+            policy = self.get_policy()
+            current_marking = self.__gspn.get_current_marking()
+            order = policy.get_places_tuple()
+            marking_tuple = self.convert_to_tuple(current_marking, order)
+            pol_dict = policy.get_policy_dictionary()
+            transition_dictionary = self.get_transitions(marking_tuple, pol_dict)
+
+            if transition_dictionary:
+                transition_list = []
+                probability_list = []
+                for transition in transition_dictionary:
+                    transition_list.append(transition)
+                    probability_list.append(transition_dictionary[transition])
+                transition_to_fire = np.random.choice(transition_list, 1, False, probability_list)
+                self.fire_execution(transition_to_fire, token_id)
+                self.__gspn.fire_transition(transition_to_fire)
+            else:
+                return
+
         else:
-            return
+            print("exponential transition, I should fire the transition on result")
+            self.fire_execution(result, token_id)
+            self.__gspn.fire_transition(result)
+        print("AFTER", self.__token_positions, self.__gspn.get_current_marking())
 
     def decide_function_to_execute(self):
         with ThreadPoolExecutor(max_workers=self.__number_of_tokens) as executor:
@@ -142,10 +160,9 @@ class GSPNexecution(object):
                         self.__token_states[thread_number] = 'Done'
 
                     if self.__token_states[thread_number] == 'Done':
-                        self.apply_policy(thread_number)
+                        self.apply_policy(thread_number, self.__futures[thread_number].result())
                         self.__token_states[thread_number] = 'Free'
                         print("--------")
-
 
     def setup_execution(self):
 
@@ -170,44 +187,9 @@ class GSPNexecution(object):
         path_name = self.get_path()
         self.__project_path = os.path.join(path_name)
         sys.path.append(self.__project_path)
-        print(self.__project_path)
 
         # Setup number of (initial) tokens
         self.__number_of_tokens = len(self.__token_states)
-
-    @staticmethod
-    def make_executable(gspn):
-        '''
-        Returns an executable version of the Petri Net, where action places are unfolded in to two places
-        :param gspn: (PN object)
-        :return:    (PN object)
-        '''
-        all_places = gspn.get_current_marking()
-
-        for place in all_places:
-            exec_place = 'i.exec.' + place;
-            exec_trans = 'ex.t.' + place;
-            end_place = 'f.end_' + place;
-
-            sub_places = {}
-            sub_places = {exec_place: 0, end_place: 0}
-
-            sub_trans = {}
-            sub_trans[exec_trans] = ['imm', 1]
-
-            arcs_in = {}
-            arcs_in[exec_place] = [exec_trans]
-            arcs_out = {}
-            arcs_out[exec_trans] = [end_place]
-
-            subPN = pn.GSPN()
-            subPN.add_places_dict(sub_places)
-            subPN.add_transitions_dict(sub_trans)
-            subPN.add_arcs(arcs_in, arcs_out)
-
-            gspn = tools.GSPNtools.expand_pn(gspn, subPN, place)
-
-        return gspn
 
 
 '''
@@ -235,24 +217,20 @@ my_execution.decide_function_to_execute()
 '''
 
 my_pn = pn.GSPN()
-places = my_pn.add_places(['p1', 'p2', 'p3'], [3, 1, 0])
+places = my_pn.add_places(['p1', 'p2', 'p3'], [1, 0, 0])
 trans = my_pn.add_transitions(['t1', 't2', 't3'], ['exp', 'exp', 'exp'], [1, 1, 0.5])
 arc_in = {}
 arc_in['p1'] = ['t1']
-arc_in['p1'] = ['t2']
-arc_in['p2'] = ['t3']
 arc_out = {}
-arc_out['t1'] = ['p2']
-arc_out['t2'] = ['p3']
-arc_out['t3'] = ['p3']
+arc_out['t1'] = ['p2', 'p3']
 a, b = my_pn.add_arcs(arc_in, arc_out)
 
 places_tup = ('p1', 'p2', 'p3')
-policy_dict = {(3, 1, 0): {'t1': 1}, (2, 2, 0): {'t1': 1}, (1, 3, 0): {'t1': 1}}
+policy_dict = {(1, 0, 0): {'t1': 0.1, 't2': 0.9}, (2, 2, 0): {'t1': 1}, (1, 3, 0): {'t1': 1}}
 policy = policy.Policy(places_tup, policy_dict)
-
 project_path = "C:/Users/calde/Desktop/ROBOT"
-p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.execute_nu', 'p3': 'functions2.make_list'}
+p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.execute_nu',
+                  'p3': 'functions2.make_list'}
 
 my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
 my_execution.setup_execution()
