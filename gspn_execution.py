@@ -72,6 +72,13 @@ class GSPNexecution(object):
                 return policy_dictionary[mark]
         return False
 
+    def translate_arcs_to_marking(self, arcs, marking):
+        translation = {}
+        for i in arcs[0]:
+            place = self.__gspn.index_to_places[i]
+            translation[place] = 1
+        return translation
+
     def fire_execution(self, transition, token_id):
         '''
         Fires the selected transition.
@@ -80,15 +87,15 @@ class GSPNexecution(object):
         '''
         arcs = self.__gspn.get_connected_arcs(transition, 'transition')
         index = self.__gspn.transitions_to_index[transition]
+        marking = self.__gspn.get_current_marking()
 
-        # On this case, we only switch the old place for the new
-        if len(arcs[1][index]) == 1:
+        # 1 to 1
+        if len(arcs[0]) == 1 and len(arcs[1][index]) == 1:
             new_place = self.__gspn.index_to_places[arcs[1][index][0]]
             self.__token_positions[token_id] = new_place
 
-        # On this case, we have more than 1 transition firing, so we need to add elements to
-        # __token_states and __token_positions
-        else:
+        # 1 to many
+        elif len(arcs[0]) == 1 and len(arcs[1][index]) > 1:
             i = 0
             for i in range(len(arcs[1][index])):
                 if i == 0:
@@ -101,6 +108,40 @@ class GSPNexecution(object):
                     self.__number_of_tokens = self.__number_of_tokens + 1
                     self.__futures.append(self.__number_of_tokens)
 
+        # many to 1
+        elif len(arcs[0]) > 1 and len(arcs[1][index]) == 1:
+            print("ARCS", arcs)
+            print("MARKING", marking)
+            translation_marking = self.translate_arcs_to_marking(arcs, marking)
+            check_flag = True
+            for el in translation_marking:
+                if translation_marking[el] != marking[el]:
+                    check_flag = False
+            if check_flag:
+                print("i can fire the transition.")
+                new_place = self.__gspn.index_to_places[arcs[1][index][0]]
+                self.__token_positions[token_id] = new_place
+                for place_index in arcs[0]:
+                    place_with_token_to_delete = self.__gspn.index_to_places[place_index]
+                    for j in range(len(self.__token_positions)):
+                        if place_with_token_to_delete == self.__token_positions[j]:
+                            index_to_del = j
+                            break
+                    del self.__token_positions[j]
+                    del self.__token_states[j]
+                    del self.__futures[j]
+
+                print("NEW TOKEN POS", self.__token_positions)
+                print("NEW TOKEN STATES", self.__token_states)
+
+            else:
+                print("i need to keep waiting but this state is changed on decide_function_to_execute")
+                self.__futures[token_id] = 'Waiting'
+
+        # many to many
+        elif len(arcs[0]) > 1 and len(arcs[1][index]) > 1:
+            print("ui")
+
     def apply_policy(self, token_id, result):
         '''
         Applies the calculated policy. If we have an immediate transition, the policy is checked. Otherwise, we simply
@@ -109,7 +150,9 @@ class GSPNexecution(object):
         :param result: result of the current place function
         :return: -2 if the current place has no output transitions. If successful, there is no return value
         '''
+
         print("BEFORE", self.__token_positions, self.__gspn.get_current_marking())
+        # IMMEDIATE transitions case
         if result is None:
             policy = self.get_policy()
             current_marking = self.__gspn.get_current_marking()
@@ -119,7 +162,6 @@ class GSPNexecution(object):
             transition_dictionary = self.get_transitions(marking_tuple, pol_dict)
 
             if transition_dictionary:
-                print("immediate transition, I should apply policy")
                 transition_list = []
                 probability_list = []
                 for transition in transition_dictionary:
@@ -131,8 +173,8 @@ class GSPNexecution(object):
             else:
                 return -2
 
+        # EXPONENTIAL transitions case
         else:
-            print("exponential transition, I should fire the transition on result")
             self.fire_execution(result, token_id)
             self.__gspn.fire_transition(result)
         print("AFTER", self.__token_positions, self.__gspn.get_current_marking())
@@ -178,6 +220,11 @@ class GSPNexecution(object):
 
                     if self.__token_states[thread_number] == 'Done':
                         res_policy = self.apply_policy(thread_number, self.__futures[thread_number].result())
+
+                        if self.__token_states[thread_number] == 'Waiting':
+                            print("i am waiting")
+                            continue
+
                         if res_policy == -2:
                             # This state is achieved when the token reaches a place with no connections.
                             self.__token_states[thread_number] = 'Inactive'
@@ -215,3 +262,168 @@ class GSPNexecution(object):
         sys.path.append(self.__project_path)
 
 
+if __name__ == "__main__":
+
+    test_case = input("Enter case number to test: ")
+    if test_case == "1":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2', 'p3'], [3, 0, 0])
+        trans = my_pn.add_transitions(['t1'], ['exp'], [1])
+        arc_in = {'p1': ['t1']}
+        arc_out = {'t1': ['p2', 'p3']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+
+        places_tup = ('p1', 'p2', 'p3')
+        policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        project_path = "C:/Users/calde/Desktop/ROBOT"
+        p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'functions2.do_nothing',
+                          'p3': 'functions2.do_nothing'}
+
+        my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
+        my_execution.setup_execution()
+        my_execution.decide_function_to_execute()
+
+    elif test_case == "2":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2', 'p3'], [1, 0, 0])
+        trans = my_pn.add_transitions(['t1', 't2'], ['exp', 'exp'], [1, 1])
+        arc_in = {'p1': ['t1', 't2']}
+        arc_out = {'t1': ['p2', 'p3']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+
+        places_tup = ('p1', 'p2', 'p3')
+        policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        project_path = "C:/Users/calde/Desktop/ROBOT"
+        p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'functions2.do_nothing',
+                          'p3': 'functions2.do_nothing'}
+
+        my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
+        my_execution.setup_execution()
+        my_execution.decide_function_to_execute()
+
+    elif test_case == "3":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2', 'p3'], [1, 1, 0])
+        trans = my_pn.add_transitions(['t1', 't2'], ['exp', 'exp'], [1, 1])
+        arc_in = {'p1': ['t1'], 'p2': ['t2']}
+        arc_out = {'t1': ['p3'], 't2': ['p3']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+
+        places_tup = ('p1', 'p2', 'p3')
+        policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        project_path = "C:/Users/calde/Desktop/ROBOT"
+        p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number2',
+                          'p3': 'functions2.do_nothing'}
+
+        my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
+        my_execution.setup_execution()
+        my_execution.decide_function_to_execute()
+
+    elif test_case == "4":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4'], [1, 1, 0, 0])
+        trans = my_pn.add_transitions(['t1', 't2'], ['exp', 'exp'], [1, 1])
+        arc_in = {'p1': ['t2'], 'p2': ['t1'], 'p3': ['t2']}
+        arc_out = {'t1': ['p3'], 't2': ['p4']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+
+        places_tup = ('p1', 'p2', 'p3')
+        policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        project_path = "C:/Users/calde/Desktop/ROBOT"
+        p_to_f_mapping = {'p1': 'folder.functions.count_Number2', 'p2': 'folder.functions.count_Number',
+                          'p3': 'folder.functions.count_Number2', 'p4': 'functions2.do_nothing'}
+
+        my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
+        my_execution.setup_execution()
+        my_execution.decide_function_to_execute()
+
+    elif test_case == "5":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2'], [1, 0])
+        trans = my_pn.add_transitions(['t1'], ['exp'], [1])
+        arc_in = {'p1': ['t1']}
+        arc_out = {'t1': ['p2']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+
+        places_tup = ('p1', 'p2')
+        policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        project_path = "C:/Users/calde/Desktop/ROBOT"
+        p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'functions2.do_nothing'}
+
+        my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
+        my_execution.setup_execution()
+        my_execution.decide_function_to_execute()
+
+'''
+COMPLEX EXAMPLE (UNFINISHED)
+
+my_pn = pn.GSPN()
+places = my_pn.add_places(['p1: looking for table', 'p2: going to table', 'p3: taking order', 'p4: going to kitchen',
+                           'p5: grabbing food', 'p6: checking bat', 'p7: going to base', 'p8: recharging',
+                           'p9: waiting'], [1, 0, 0, 0, 0, 0, 0, 0, 0])
+trans = my_pn.add_transitions(['t1:detected table', 't2: table reached', 't3: order taken', 't4: kitchen reached',
+                               't5: food grabbed', 't6: bat>20', 't7: bat<=20', 't8: base reached',
+                               't9: recharge complete', 't10: table not detected', 't11: waited'], ['exp', 'exp', 'exp',
+                                                                                                    'exp', 'exp', 'imm',
+                                                                                                    'imm', 'exp', 'exp',
+                                                                                                    'exp', 'exp'],
+                              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+
+arc_in = {'p1: looking for table': ['t1:detected table', 't10: table not detected'],
+          'p2: going to table': 't2: table reached',
+          'p3: taking order': 't3: order taken',
+          'p4: going to kitchen': 't4: kitchen reached',
+          'p5: grabbing food': 't5: food grabbed',
+          'p6: checking bat': ['t6: bat>20', 't7: bat<=20'],
+          'p7: going to base': 't8: base reached',
+          'p8: recharging': 't9: recharge complete',
+          'p9: waiting': 't11: waited'}
+
+arc_out = {'t1:detected table': 'p2: going to table',
+           't2: table reached': 'p3: taking order',
+           't3: order taken': 'p4: going to kitchen',
+           't4: kitchen reached': 'p5: grabbing food',
+           't5: food grabbed': 'p6: checking bat',
+           't6: bat>20': 'p1: looking for table',
+           't7: bat<=20': 'p7: going to base',
+           't8: base reached': 'p8: recharging',
+           't9: recharge complete': 'p1: looking for table',
+           't10: table not detected': 'p9: waiting',
+           't11: waited': 'p1: looking for table'}
+
+a, b = my_pn.add_arcs(arc_in, arc_out)
+
+places_tup = ('p1: looking for table', 'p2: going to table', 'p3: taking order', 'p4: going to kitchen',
+              'p5: grabbing food', 'p6: checking bat', 'p7: going to base', 'p8: recharging',
+              'p9: waiting')
+policy_dict = {(0, 0, 0, 0, 0, 1, 0, 0, 0): {'t6': 0.5, 't7': 0.5}}
+
+project_path = "C:/Users/calde/Desktop/ROBOT"
+'''
+
+'''
+SIMPLE EXAMPLE
+--------------
+my_pn = pn.GSPN()
+places = my_pn.add_places(['p1', 'p2', 'p3'], [2, 0, 0])
+trans = my_pn.add_transitions(['t1', 't2'], ['exp', 'exp'], [1, 1])
+arc_in = {'p1': ['t1'], 'p2': ['t2']}
+arc_out = {'t1': ['p2'], 't2': ['p3']}
+a, b = my_pn.add_arcs(arc_in, arc_out)
+
+places_tup = ('p1', 'p2', 'p3')
+policy_dict = {(0, 0, 2, 0, 0): {'t3': 0.5, 't4': 0.5}}
+policy = policy.Policy(places_tup, policy_dict)
+project_path = "C:/Users/calde/Desktop/ROBOT"
+p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number2',
+                  'p3': 'functions2.make_list'}
+
+my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
+my_execution.setup_execution()
+my_execution.decide_function_to_execute()
+'''
