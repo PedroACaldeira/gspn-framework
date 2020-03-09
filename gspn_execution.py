@@ -8,6 +8,8 @@ import numpy as np
 '''
 __token_states is a list with the states of each token ['Free', 'Occupied', 'Done'] means that token 1 is Free, token 2
 is Occupied and token 3 is Done. 
+__token_positions is a list with the places where each token is ['p1', 'p2', 'p2'] means that token 1 is on p1, token 2
+is on p2 and token 3 is on p2. 
 '''
 
 
@@ -71,6 +73,11 @@ class GSPNexecution(object):
         return False
 
     def fire_execution(self, transition, token_id):
+        '''
+        Fires the selected transition.
+        :param transition: string with transition that should be fired
+        :param token_id: int with the number of the token that is being fired
+        '''
         arcs = self.__gspn.get_connected_arcs(transition, 'transition')
         index = self.__gspn.transitions_to_index[transition]
 
@@ -95,6 +102,13 @@ class GSPNexecution(object):
                     self.__futures.append(self.__number_of_tokens)
 
     def apply_policy(self, token_id, result):
+        '''
+        Applies the calculated policy. If we have an immediate transition, the policy is checked. Otherwise, we simply
+        fire the transition that resulted from the function that was executed.
+        :param token_id: number of the token that is about to fire
+        :param result: result of the current place function
+        :return: -2 if the current place has no output transitions. If successful, there is no return value
+        '''
         print("BEFORE", self.__token_positions, self.__gspn.get_current_marking())
         if result is None:
             policy = self.get_policy()
@@ -124,6 +138,11 @@ class GSPNexecution(object):
         print("AFTER", self.__token_positions, self.__gspn.get_current_marking())
 
     def decide_function_to_execute(self):
+        '''
+        Main execution cycle. At every instant, the threads check whether the tokens are done with their functions
+        or not.
+        max_workers = self.__number_of_tokens * 3 because of the case where we have new tokens being created.
+        '''
         with ThreadPoolExecutor(max_workers=self.__number_of_tokens * 3) as executor:
             while True:
                 number_tokens = self.__gspn.get_number_of_tokens()
@@ -167,6 +186,12 @@ class GSPNexecution(object):
                         print("--------")
 
     def setup_execution(self):
+        '''
+        Prepares the following elements of the execution:
+        1- token_states list and number of (initial) tokens;
+        2- token_positions list;
+        3- project path.
+        '''
 
         # Setup token_states list and number of (initial) tokens
         self.__number_of_tokens = self.__gspn.get_number_of_tokens()
@@ -190,20 +215,3 @@ class GSPNexecution(object):
         sys.path.append(self.__project_path)
 
 
-my_pn = pn.GSPN()
-places = my_pn.add_places(['p1', 'p2', 'p3'], [2, 0, 0])
-trans = my_pn.add_transitions(['t1', 't2'], ['exp', 'exp'], [1, 1])
-arc_in = {'p1': ['t1'], 'p2': ['t2']}
-arc_out = {'t1': ['p2'], 't2': ['p3']}
-a, b = my_pn.add_arcs(arc_in, arc_out)
-
-places_tup = ('p1', 'p2', 'p3')
-policy_dict = {(0, 0, 2, 0, 0): {'t3': 0.5, 't4': 0.5}}
-policy = policy.Policy(places_tup, policy_dict)
-project_path = "C:/Users/calde/Desktop/ROBOT"
-p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number2',
-                  'p3': 'functions2.make_list'}
-
-my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
-my_execution.setup_execution()
-my_execution.decide_function_to_execute()
