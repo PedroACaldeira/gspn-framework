@@ -93,6 +93,7 @@ class GSPNexecution(object):
         if len(arcs[0]) == 1 and len(arcs[1][index]) == 1:
             new_place = self.__gspn.index_to_places[arcs[1][index][0]]
             self.__token_positions[token_id] = new_place
+            self.__gspn.fire_transition(transition)
 
         # 1 to many
         elif len(arcs[0]) == 1 and len(arcs[1][index]) > 1:
@@ -107,36 +108,34 @@ class GSPNexecution(object):
                     self.__token_states.append('Free')
                     self.__number_of_tokens = self.__number_of_tokens + 1
                     self.__futures.append(self.__number_of_tokens)
+                    self.__gspn.fire_transition(transition)
 
         # many to 1
         elif len(arcs[0]) > 1 and len(arcs[1][index]) == 1:
-            print("ARCS", arcs)
             print("MARKING", marking)
             translation_marking = self.translate_arcs_to_marking(arcs, marking)
+            print("TRANSLATION MARKIN", translation_marking)
             check_flag = True
             for el in translation_marking:
-                if translation_marking[el] != marking[el]:
+                if marking[el] < translation_marking[el]:
                     check_flag = False
             if check_flag:
-                print("i can fire the transition.")
                 new_place = self.__gspn.index_to_places[arcs[1][index][0]]
+                old_place = self.__token_positions[token_id]
                 self.__token_positions[token_id] = new_place
+                self.__gspn.fire_transition(transition)
                 for place_index in arcs[0]:
+                    print("ARCS", arcs[0])
                     place_with_token_to_delete = self.__gspn.index_to_places[place_index]
-                    for j in range(len(self.__token_positions)):
-                        if place_with_token_to_delete == self.__token_positions[j]:
-                            index_to_del = j
-                            break
-                    del self.__token_positions[j]
-                    del self.__token_states[j]
-                    del self.__futures[j]
-
-                print("NEW TOKEN POS", self.__token_positions)
-                print("NEW TOKEN STATES", self.__token_states)
-
+                    if place_with_token_to_delete != old_place:
+                        for j in range(len(self.__token_positions)):
+                            if place_with_token_to_delete == self.__token_positions[j]:
+                                index_to_del = j
+                                self.__token_positions[index_to_del] = "null"
+                                self.__token_states[index_to_del] = "VOID"
+                                break
             else:
-                print("i need to keep waiting but this state is changed on decide_function_to_execute")
-                self.__futures[token_id] = 'Waiting'
+                self.__token_states[token_id] = 'Waiting'
 
         # many to many
         elif len(arcs[0]) > 1 and len(arcs[1][index]) > 1:
@@ -151,7 +150,7 @@ class GSPNexecution(object):
         :return: -2 if the current place has no output transitions. If successful, there is no return value
         '''
 
-        print("BEFORE", self.__token_positions, self.__gspn.get_current_marking())
+        print("BEFORE", self.__gspn.get_current_marking())
         # IMMEDIATE transitions case
         if result is None:
             policy = self.get_policy()
@@ -169,15 +168,13 @@ class GSPNexecution(object):
                     probability_list.append(transition_dictionary[transition])
                 transition_to_fire = np.random.choice(transition_list, 1, False, probability_list)[0]
                 self.fire_execution(transition_to_fire, token_id)
-                self.__gspn.fire_transition(transition_to_fire)
             else:
                 return -2
 
         # EXPONENTIAL transitions case
         else:
             self.fire_execution(result, token_id)
-            self.__gspn.fire_transition(result)
-        print("AFTER", self.__token_positions, self.__gspn.get_current_marking())
+        print("AFTER", self.__gspn.get_current_marking())
 
     def decide_function_to_execute(self):
         '''
@@ -187,8 +184,9 @@ class GSPNexecution(object):
         '''
         with ThreadPoolExecutor(max_workers=self.__number_of_tokens * 3) as executor:
             while True:
-                number_tokens = self.__gspn.get_number_of_tokens()
+                number_tokens = len(self.__token_positions)
                 for thread_number in range(number_tokens):
+
                     if self.__token_states[thread_number] == 'Free':
                         place = self.__token_positions[thread_number]
                         splitted_path = self.__place_to_function_mapping[place].split(".")
@@ -215,7 +213,7 @@ class GSPNexecution(object):
                         self.__token_states[thread_number] = 'Occupied'
                         self.__futures[thread_number] = executor.submit(function_to_exec, thread_number)
 
-                    if self.__futures[thread_number].done() and self.__token_states[thread_number] == 'Occupied':
+                    if self.__token_states[thread_number] == 'Occupied' and self.__futures[thread_number].done():
                         self.__token_states[thread_number] = 'Done'
 
                     if self.__token_states[thread_number] == 'Done':
@@ -223,14 +221,14 @@ class GSPNexecution(object):
 
                         if self.__token_states[thread_number] == 'Waiting':
                             print("i am waiting")
-                            continue
 
-                        if res_policy == -2:
+                        elif res_policy == -2:
                             # This state is achieved when the token reaches a place with no connections.
                             self.__token_states[thread_number] = 'Inactive'
                         else:
                             self.__token_states[thread_number] = 'Free'
                         print("--------")
+                    # print("Token states", self.__token_states)
 
     def setup_execution(self):
         '''
@@ -289,7 +287,7 @@ if __name__ == "__main__":
         places = my_pn.add_places(['p1', 'p2', 'p3'], [1, 0, 0])
         trans = my_pn.add_transitions(['t1', 't2'], ['exp', 'exp'], [1, 1])
         arc_in = {'p1': ['t1', 't2']}
-        arc_out = {'t1': ['p2', 'p3']}
+        arc_out = {'t1': ['p2'], 't2': ['p3']}
         a, b = my_pn.add_arcs(arc_in, arc_out)
 
         places_tup = ('p1', 'p2', 'p3')
@@ -324,10 +322,10 @@ if __name__ == "__main__":
 
     elif test_case == "4":
         my_pn = pn.GSPN()
-        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4'], [1, 1, 0, 0])
-        trans = my_pn.add_transitions(['t1', 't2'], ['exp', 'exp'], [1, 1])
-        arc_in = {'p1': ['t2'], 'p2': ['t1'], 'p3': ['t2']}
-        arc_out = {'t1': ['p3'], 't2': ['p4']}
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5'], [4, 1, 2, 1, 0])
+        trans = my_pn.add_transitions(['t1', 't2', 't3'], ['exp', 'exp', 'exp'], [1, 1, 1])
+        arc_in = {'p1': ['t2'], 'p2': ['t1'], 'p3': ['t2'], 'p4': ['t3']}
+        arc_out = {'t1': ['p3'], 't2': ['p4'], 't3': ['p5']}
         a, b = my_pn.add_arcs(arc_in, arc_out)
 
         places_tup = ('p1', 'p2', 'p3')
@@ -335,7 +333,8 @@ if __name__ == "__main__":
         policy = policy.Policy(places_tup, policy_dict)
         project_path = "C:/Users/calde/Desktop/ROBOT"
         p_to_f_mapping = {'p1': 'folder.functions.count_Number2', 'p2': 'folder.functions.count_Number',
-                          'p3': 'folder.functions.count_Number2', 'p4': 'functions2.do_nothing'}
+                          'p3': 'folder.functions.count_Number2', 'p4': 'folder.functions.count_Number3',
+                          'p5': 'functions2.do_nothing'}
 
         my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
         my_execution.setup_execution()
