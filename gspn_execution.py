@@ -98,7 +98,7 @@ class GSPNexecution(object):
         # 1 to many
         elif len(arcs[0]) == 1 and len(arcs[1][index]) > 1:
             i = 0
-            for i in range(len(arcs[1][index])):
+            for i in range(len(arcs[1][index])-1):
                 if i == 0:
                     new_place = self.__gspn.index_to_places[arcs[1][index][i]]
                     self.__token_positions[token_id] = new_place
@@ -112,9 +112,7 @@ class GSPNexecution(object):
 
         # many to 1
         elif len(arcs[0]) > 1 and len(arcs[1][index]) == 1:
-            print("MARKING", marking)
             translation_marking = self.translate_arcs_to_marking(arcs, marking)
-            print("TRANSLATION MARKIN", translation_marking)
             check_flag = True
             for el in translation_marking:
                 if marking[el] < translation_marking[el]:
@@ -125,7 +123,6 @@ class GSPNexecution(object):
                 self.__token_positions[token_id] = new_place
                 self.__gspn.fire_transition(transition)
                 for place_index in arcs[0]:
-                    print("ARCS", arcs[0])
                     place_with_token_to_delete = self.__gspn.index_to_places[place_index]
                     if place_with_token_to_delete != old_place:
                         for j in range(len(self.__token_positions)):
@@ -139,15 +136,12 @@ class GSPNexecution(object):
 
         # many to many
         elif len(arcs[0]) > 1 and len(arcs[1][index]) > 1:
-            print("MARKING", marking)
             translation_marking = self.translate_arcs_to_marking(arcs, marking)
-            print("TRANSLATION MARKIN", translation_marking)
             check_flag = True
             for el in translation_marking:
                 if marking[el] < translation_marking[el]:
                     check_flag = False
             if check_flag:
-
                 # Create tokens on next places
                 i = 0
                 for i in range(len(arcs[1][index])):
@@ -164,7 +158,6 @@ class GSPNexecution(object):
 
                 # Delete tokens from previous places
                 for place_index in arcs[0]:
-                    print("ARCS", arcs[0])
                     place_with_token_to_delete = self.__gspn.index_to_places[place_index]
                     for j in range(len(self.__token_positions)):
                         if place_with_token_to_delete == self.__token_positions[j]:
@@ -187,11 +180,11 @@ class GSPNexecution(object):
         print("BEFORE", self.__gspn.get_current_marking())
         # IMMEDIATE transitions case
         if result is None:
-            policy = self.get_policy()
+            execution_policy = self.get_policy()
             current_marking = self.__gspn.get_current_marking()
-            order = policy.get_places_tuple()
+            order = execution_policy.get_places_tuple()
             marking_tuple = self.convert_to_tuple(current_marking, order)
-            pol_dict = policy.get_policy_dictionary()
+            pol_dict = execution_policy.get_policy_dictionary()
             transition_dictionary = self.get_transitions(marking_tuple, pol_dict)
 
             if transition_dictionary:
@@ -201,6 +194,7 @@ class GSPNexecution(object):
                     transition_list.append(transition)
                     probability_list.append(transition_dictionary[transition])
                 transition_to_fire = np.random.choice(transition_list, 1, False, probability_list)[0]
+                print("TRANSITION TO FIRE", transition_to_fire)
                 self.fire_execution(transition_to_fire, token_id)
             else:
                 return -2
@@ -395,26 +389,36 @@ if __name__ == "__main__":
 
     elif test_case == "6":
         my_pn = pn.GSPN()
-        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10'],
-                                  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12'],
+                                  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
         trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10'],
                                       ['exp', 'exp', 'exp', 'exp', 'exp', 'imm', 'imm', 'exp', 'exp', 'exp'],
                                       [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
         arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p3': ['t3'], 'p5': ['t4'], 'p6': ['t4'], 'p7': ['t5'],
-                  'p8': ['t6', 't7'], 'p9': ['t8', 't9'], 'p10': ['t10'], 'p11': ['t4']}
+                  'p8': ['t6', 't7'], 'p9': ['t8', 't9'], 'p10': ['t10'], 'p11': ['t4'], 'p12': ['t5']}
 
-        arc_out = {'t1': ['p2'], 't2': ['p3'], 't3': ['p4', 'p5', 'p6'], 't4': ['p7'], 't5': ['p8'], 't6': ['p1'],
+        arc_out = {'t1': ['p2'], 't2': ['p3'], 't3': ['p4', 'p5', 'p6'], 't4': ['p7'], 't5': ['p8', 'p9'], 't6': ['p1'],
                    't7': ['p9'], 't8': ['p2'], 't9': ['p10'], 't10': ['p1']}
 
         a, b = my_pn.add_arcs(arc_in, arc_out)
 
-        places_tup = ('p1: looking for table', 'p2: going to table', 'p3: taking order', 'p4: going to kitchen',
-                      'p5: grabbing food', 'p6: checking bat', 'p7: going to base', 'p8: recharging',
-                      'p9: waiting')
-        policy_dict = {(0, 0, 0, 0, 0, 1, 0, 0, 0): {'t6': 0.5, 't7': 0.5}}
+        places_tup = ('p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12')
+        policy_dict = {(0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0): {'t6': 0.5, 't7': 0.5}}
+        policy = policy.Policy(policy_dict, places_tup)
 
         project_path = "C:/Users/calde/Desktop/ROBOT"
+
+        p_to_f_mapping = {'p1': 'folder.functions.count_Number1', 'p2': 'folder.functions.count_Number2',
+                          'p3': 'folder.functions.count_Number3', 'p4': 'functions2.do_nothing',
+                          'p5': 'folder.functions.count_Number4', 'p6': 'folder.functions.count_Number4',
+                          'p7': 'folder.functions.count_Number5', 'p8': 'functions2.do_nothing',
+                          'p9': 'folder.functions.count_Number9', 'p10': 'folder.functions.count_Number10',
+                          'p11': 'folder.functions.count_Number4', 'p12': 'folder.functions.count_Number5'}
+
+        my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
+        my_execution.setup_execution()
+        my_execution.decide_function_to_execute()
 
     else:
         print("Sorry, that test is not available yet. Try again in a few months!")
