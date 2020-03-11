@@ -139,7 +139,41 @@ class GSPNexecution(object):
 
         # many to many
         elif len(arcs[0]) > 1 and len(arcs[1][index]) > 1:
-            print("ui")
+            print("MARKING", marking)
+            translation_marking = self.translate_arcs_to_marking(arcs, marking)
+            print("TRANSLATION MARKIN", translation_marking)
+            check_flag = True
+            for el in translation_marking:
+                if marking[el] < translation_marking[el]:
+                    check_flag = False
+            if check_flag:
+
+                # Create tokens on next places
+                i = 0
+                for i in range(len(arcs[1][index])):
+                    if i == 0:
+                        new_place = self.__gspn.index_to_places[arcs[1][index][i]]
+                        self.__token_positions[token_id] = new_place
+                    else:
+                        new_place = self.__gspn.index_to_places[arcs[1][index][i]]
+                        self.__token_positions.append(new_place)
+                        self.__token_states.append('Free')
+                        self.__number_of_tokens = self.__number_of_tokens + 1
+                        self.__futures.append(self.__number_of_tokens)
+                        self.__gspn.fire_transition(transition)
+
+                # Delete tokens from previous places
+                for place_index in arcs[0]:
+                    print("ARCS", arcs[0])
+                    place_with_token_to_delete = self.__gspn.index_to_places[place_index]
+                    for j in range(len(self.__token_positions)):
+                        if place_with_token_to_delete == self.__token_positions[j]:
+                            index_to_del = j
+                            self.__token_positions[index_to_del] = "null"
+                            self.__token_states[index_to_del] = "VOID"
+                            break
+            else:
+                self.__token_states[token_id] = 'Waiting'
 
     def apply_policy(self, token_id, result):
         '''
@@ -322,18 +356,18 @@ if __name__ == "__main__":
 
     elif test_case == "4":
         my_pn = pn.GSPN()
-        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5'], [4, 1, 2, 1, 0])
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5'], [2, 1, 2, 0, 0])
         trans = my_pn.add_transitions(['t1', 't2', 't3'], ['exp', 'exp', 'exp'], [1, 1, 1])
-        arc_in = {'p1': ['t2'], 'p2': ['t1'], 'p3': ['t2'], 'p4': ['t3']}
-        arc_out = {'t1': ['p3'], 't2': ['p4'], 't3': ['p5']}
+        arc_in = {'p1': ['t1'], 'p2': ['t1'], 'p3': ['t1'], 'p4': ['t2']}
+        arc_out = {'t1': ['p4'], 't2': ['p5']}
         a, b = my_pn.add_arcs(arc_in, arc_out)
 
         places_tup = ('p1', 'p2', 'p3')
         policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
         policy = policy.Policy(places_tup, policy_dict)
         project_path = "C:/Users/calde/Desktop/ROBOT"
-        p_to_f_mapping = {'p1': 'folder.functions.count_Number2', 'p2': 'folder.functions.count_Number',
-                          'p3': 'folder.functions.count_Number2', 'p4': 'folder.functions.count_Number3',
+        p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number',
+                          'p3': 'folder.functions.count_Number', 'p4': 'folder.functions.count_Number2',
                           'p5': 'functions2.do_nothing'}
 
         my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
@@ -342,87 +376,45 @@ if __name__ == "__main__":
 
     elif test_case == "5":
         my_pn = pn.GSPN()
-        places = my_pn.add_places(['p1', 'p2'], [1, 0])
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4'], [0, 2, 0, 0])
         trans = my_pn.add_transitions(['t1'], ['exp'], [1])
-        arc_in = {'p1': ['t1']}
-        arc_out = {'t1': ['p2']}
+        arc_in = {'p1': ['t1'], 'p2': ['t1']}
+        arc_out = {'t1': ['p3', 'p4']}
         a, b = my_pn.add_arcs(arc_in, arc_out)
 
-        places_tup = ('p1', 'p2')
-        policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
+        places_tup = ('p1', 'p2', 'p3')
+        policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
         policy = policy.Policy(places_tup, policy_dict)
         project_path = "C:/Users/calde/Desktop/ROBOT"
-        p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'functions2.do_nothing'}
+        p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number',
+                          'p3': 'functions2.do_nothing', 'p4': 'functions2.do_nothing'}
 
         my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
         my_execution.setup_execution()
         my_execution.decide_function_to_execute()
 
-'''
-COMPLEX EXAMPLE (UNFINISHED)
+    elif test_case == "6":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10'],
+                                  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10'],
+                                      ['exp', 'exp', 'exp', 'exp', 'exp', 'imm', 'imm', 'exp', 'exp', 'exp'],
+                                      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-my_pn = pn.GSPN()
-places = my_pn.add_places(['p1: looking for table', 'p2: going to table', 'p3: taking order', 'p4: going to kitchen',
-                           'p5: grabbing food', 'p6: checking bat', 'p7: going to base', 'p8: recharging',
-                           'p9: waiting'], [1, 0, 0, 0, 0, 0, 0, 0, 0])
-trans = my_pn.add_transitions(['t1:detected table', 't2: table reached', 't3: order taken', 't4: kitchen reached',
-                               't5: food grabbed', 't6: bat>20', 't7: bat<=20', 't8: base reached',
-                               't9: recharge complete', 't10: table not detected', 't11: waited'], ['exp', 'exp', 'exp',
-                                                                                                    'exp', 'exp', 'imm',
-                                                                                                    'imm', 'exp', 'exp',
-                                                                                                    'exp', 'exp'],
-                              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p3': ['t3'], 'p5': ['t4'], 'p6': ['t4'], 'p7': ['t5'],
+                  'p8': ['t6', 't7'], 'p9': ['t8', 't9'], 'p10': ['t10'], 'p11': ['t4']}
 
-arc_in = {'p1: looking for table': ['t1:detected table', 't10: table not detected'],
-          'p2: going to table': 't2: table reached',
-          'p3: taking order': 't3: order taken',
-          'p4: going to kitchen': 't4: kitchen reached',
-          'p5: grabbing food': 't5: food grabbed',
-          'p6: checking bat': ['t6: bat>20', 't7: bat<=20'],
-          'p7: going to base': 't8: base reached',
-          'p8: recharging': 't9: recharge complete',
-          'p9: waiting': 't11: waited'}
+        arc_out = {'t1': ['p2'], 't2': ['p3'], 't3': ['p4', 'p5', 'p6'], 't4': ['p7'], 't5': ['p8'], 't6': ['p1'],
+                   't7': ['p9'], 't8': ['p2'], 't9': ['p10'], 't10': ['p1']}
 
-arc_out = {'t1:detected table': 'p2: going to table',
-           't2: table reached': 'p3: taking order',
-           't3: order taken': 'p4: going to kitchen',
-           't4: kitchen reached': 'p5: grabbing food',
-           't5: food grabbed': 'p6: checking bat',
-           't6: bat>20': 'p1: looking for table',
-           't7: bat<=20': 'p7: going to base',
-           't8: base reached': 'p8: recharging',
-           't9: recharge complete': 'p1: looking for table',
-           't10: table not detected': 'p9: waiting',
-           't11: waited': 'p1: looking for table'}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
 
-a, b = my_pn.add_arcs(arc_in, arc_out)
+        places_tup = ('p1: looking for table', 'p2: going to table', 'p3: taking order', 'p4: going to kitchen',
+                      'p5: grabbing food', 'p6: checking bat', 'p7: going to base', 'p8: recharging',
+                      'p9: waiting')
+        policy_dict = {(0, 0, 0, 0, 0, 1, 0, 0, 0): {'t6': 0.5, 't7': 0.5}}
 
-places_tup = ('p1: looking for table', 'p2: going to table', 'p3: taking order', 'p4: going to kitchen',
-              'p5: grabbing food', 'p6: checking bat', 'p7: going to base', 'p8: recharging',
-              'p9: waiting')
-policy_dict = {(0, 0, 0, 0, 0, 1, 0, 0, 0): {'t6': 0.5, 't7': 0.5}}
+        project_path = "C:/Users/calde/Desktop/ROBOT"
 
-project_path = "C:/Users/calde/Desktop/ROBOT"
-'''
-
-'''
-SIMPLE EXAMPLE
---------------
-my_pn = pn.GSPN()
-places = my_pn.add_places(['p1', 'p2', 'p3'], [2, 0, 0])
-trans = my_pn.add_transitions(['t1', 't2'], ['exp', 'exp'], [1, 1])
-arc_in = {'p1': ['t1'], 'p2': ['t2']}
-arc_out = {'t1': ['p2'], 't2': ['p3']}
-a, b = my_pn.add_arcs(arc_in, arc_out)
-
-places_tup = ('p1', 'p2', 'p3')
-policy_dict = {(0, 0, 2, 0, 0): {'t3': 0.5, 't4': 0.5}}
-policy = policy.Policy(places_tup, policy_dict)
-project_path = "C:/Users/calde/Desktop/ROBOT"
-p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number2',
-                  'p3': 'functions2.make_list'}
-
-my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
-my_execution.setup_execution()
-my_execution.decide_function_to_execute()
-'''
+    else:
+        print("Sorry, that test is not available yet. Try again in a few months!")
