@@ -98,7 +98,7 @@ class GSPNexecution(object):
         # 1 to many
         elif len(arcs[0]) == 1 and len(arcs[1][index]) > 1:
             i = 0
-            for i in range(len(arcs[1][index])-1):
+            for i in range(len(arcs[1][index])):
                 if i == 0:
                     new_place = self.__gspn.index_to_places[arcs[1][index][i]]
                     self.__token_positions[token_id] = new_place
@@ -108,15 +108,31 @@ class GSPNexecution(object):
                     self.__token_states.append('Free')
                     self.__number_of_tokens = self.__number_of_tokens + 1
                     self.__futures.append(self.__number_of_tokens)
-                    self.__gspn.fire_transition(transition)
+            self.__gspn.fire_transition(transition)
 
         # many to 1
         elif len(arcs[0]) > 1 and len(arcs[1][index]) == 1:
             translation_marking = self.translate_arcs_to_marking(arcs, marking)
             check_flag = True
+
+            # We go through the marking and check it
             for el in translation_marking:
                 if marking[el] < translation_marking[el]:
                     check_flag = False
+
+            # We go through the states and see if all of them are 'Waiting'
+            number_of_waiting = 0
+            for place in translation_marking:
+                for pos_index in range(len(self.__token_positions)):
+                    if self.__token_positions[pos_index] == place:
+                        if self.__token_states[pos_index] == 'Waiting':
+                            number_of_waiting = number_of_waiting + 1
+                            break
+            if number_of_waiting == len(translation_marking) - 1:
+                check_flag = True
+            else:
+                check_flag = False
+
             if check_flag:
                 new_place = self.__gspn.index_to_places[arcs[1][index][0]]
                 old_place = self.__token_positions[token_id]
@@ -350,7 +366,7 @@ if __name__ == "__main__":
 
     elif test_case == "4":
         my_pn = pn.GSPN()
-        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5'], [2, 1, 2, 0, 0])
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5'], [1, 1, 1, 0, 0])
         trans = my_pn.add_transitions(['t1', 't2', 't3'], ['exp', 'exp', 'exp'], [1, 1, 1])
         arc_in = {'p1': ['t1'], 'p2': ['t1'], 'p3': ['t1'], 'p4': ['t2']}
         arc_out = {'t1': ['p4'], 't2': ['p5']}
@@ -360,8 +376,8 @@ if __name__ == "__main__":
         policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
         policy = policy.Policy(places_tup, policy_dict)
         project_path = "C:/Users/calde/Desktop/ROBOT"
-        p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number',
-                          'p3': 'folder.functions.count_Number', 'p4': 'folder.functions.count_Number2',
+        p_to_f_mapping = {'p1': 'folder.functions.count_Number1', 'p2': 'folder.functions.count_Number1',
+                          'p3': 'folder.functions.count_Number1', 'p4': 'folder.functions.count_Number2',
                           'p5': 'functions2.do_nothing'}
 
         my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
@@ -390,7 +406,7 @@ if __name__ == "__main__":
     elif test_case == "6":
         my_pn = pn.GSPN()
         places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12'],
-                                  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
+                                  [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0])
         trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10'],
                                       ['exp', 'exp', 'exp', 'exp', 'exp', 'imm', 'imm', 'exp', 'exp', 'exp'],
                                       [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
@@ -404,17 +420,21 @@ if __name__ == "__main__":
         a, b = my_pn.add_arcs(arc_in, arc_out)
 
         places_tup = ('p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12')
-        policy_dict = {(0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0): {'t6': 0.5, 't7': 0.5}}
+        policy_dict = {(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0): {'t6': 0.5, 't7': 0.5},
+                       (1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0): {'t6': 0.8, 't7': 0.2},
+                       (1, 0, 0, 2, 2, 2, 1, 0, 0, 0, 1, 0): {'t6': 0.8, 't7': 0.2},
+                       (0, 0, 0, 3, 3, 3, 1, 0, 0, 0, 1, 0): {'t6': 0.8, 't7': 0.2},
+                       (2, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0): {'t6': 0.8, 't7': 0.2}}
         policy = policy.Policy(policy_dict, places_tup)
 
         project_path = "C:/Users/calde/Desktop/ROBOT"
 
         p_to_f_mapping = {'p1': 'folder.functions.count_Number1', 'p2': 'folder.functions.count_Number2',
                           'p3': 'folder.functions.count_Number3', 'p4': 'functions2.do_nothing',
-                          'p5': 'folder.functions.count_Number4', 'p6': 'folder.functions.count_Number4',
-                          'p7': 'folder.functions.count_Number5', 'p8': 'functions2.do_nothing',
+                          'p5': 'folder.functions.count_Number5', 'p6': 'folder.functions.count_Number6',
+                          'p7': 'folder.functions.count_Number7', 'p8': 'functions2.do_nothing',
                           'p9': 'folder.functions.count_Number9', 'p10': 'folder.functions.count_Number10',
-                          'p11': 'folder.functions.count_Number4', 'p12': 'folder.functions.count_Number5'}
+                          'p11': 'folder.functions.count_Number11', 'p12': 'folder.functions.count_Number12'}
 
         my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
         my_execution.setup_execution()
