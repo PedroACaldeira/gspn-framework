@@ -7,9 +7,9 @@ import numpy as np
 
 '''
 __token_states is a list with the states of each token ['Free', 'Occupied', 'Done'] means that token 1 is Free, token 2
-is Occupied and token 3 is Done. 
+is Occupied and token 3 is Done.
 __token_positions is a list with the places where each token is ['p1', 'p2', 'p2'] means that token 1 is on p1, token 2
-is on p2 and token 3 is on p2. 
+is on p2 and token 3 is on p2.
 '''
 
 
@@ -307,6 +307,7 @@ class GSPNexecution(object):
 if __name__ == "__main__":
 
     test_case = input("Enter case number to test: ")
+    print("hello")
     if test_case == "1":
         my_pn = pn.GSPN()
         places = my_pn.add_places(['p1', 'p2', 'p3'], [3, 0, 0])
