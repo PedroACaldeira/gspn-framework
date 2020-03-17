@@ -307,7 +307,6 @@ class GSPNexecution(object):
 if __name__ == "__main__":
 
     test_case = input("Enter case number to test: ")
-    print("hello")
     if test_case == "1":
         my_pn = pn.GSPN()
         places = my_pn.add_places(['p1', 'p2', 'p3'], [3, 0, 0])
