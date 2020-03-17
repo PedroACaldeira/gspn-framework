@@ -249,6 +249,7 @@ class GSPNexecution(object):
                                 if element != splitted_path[-1]:
                                     new_path = new_path + "." + element
 
+                            dirpath = os.getcwd()
                             function_location = new_path
                             function_name = splitted_path[-1]
                             module_to_exec = __import__(function_location, fromlist=[function_name])
@@ -307,6 +308,26 @@ class GSPNexecution(object):
 if __name__ == "__main__":
 
     test_case = input("Enter case number to test: ")
+
+    if test_case == "0":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2'], [3, 0])
+        trans = my_pn.add_transitions(['t1'], ['exp'], [1])
+        arc_in = {'p1': ['t1']}
+        arc_out = {'t1': ['p2']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+        # Since I'm not using imm transitions, this part is irrelevant
+        places_tup = ('p1', 'p2')
+        policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        # project_path = "C:/Users/calde/Desktop/ROBOT"
+        project_path = "/home/pedroac/MEIC - THESIS/ROBOT"
+        p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'functions2.do_nothing'}
+
+        my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
+        my_execution.setup_execution()
+        my_execution.decide_function_to_execute()
+
     if test_case == "1":
         my_pn = pn.GSPN()
         places = my_pn.add_places(['p1', 'p2', 'p3'], [3, 0, 0])
@@ -318,13 +339,17 @@ if __name__ == "__main__":
         places_tup = ('p1', 'p2', 'p3')
         policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
         policy = policy.Policy(places_tup, policy_dict)
-        project_path = "C:/Users/calde/Desktop/ROBOT"
+        # project_path = "C:/Users/calde/Desktop/ROBOT"
+        project_path = "/home/pedroac/MEIC - THESIS/ROBOT"
+
         p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'functions2.do_nothing',
                           'p3': 'functions2.do_nothing'}
 
         my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
         my_execution.setup_execution()
         my_execution.decide_function_to_execute()
+
+
 
     elif test_case == "2":
         my_pn = pn.GSPN()
@@ -337,7 +362,8 @@ if __name__ == "__main__":
         places_tup = ('p1', 'p2', 'p3')
         policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
         policy = policy.Policy(places_tup, policy_dict)
-        project_path = "C:/Users/calde/Desktop/ROBOT"
+        # project_path = "C:/Users/calde/Desktop/ROBOT"
+        project_path = "/home/pedroac/MEIC - THESIS/ROBOT"
         p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'functions2.do_nothing',
                           'p3': 'functions2.do_nothing'}
 
@@ -356,7 +382,8 @@ if __name__ == "__main__":
         places_tup = ('p1', 'p2', 'p3')
         policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
         policy = policy.Policy(places_tup, policy_dict)
-        project_path = "C:/Users/calde/Desktop/ROBOT"
+        # project_path = "C:/Users/calde/Desktop/ROBOT"
+        project_path = "/home/pedroac/MEIC - THESIS/ROBOT"
         p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number2',
                           'p3': 'functions2.do_nothing'}
 
@@ -375,9 +402,10 @@ if __name__ == "__main__":
         places_tup = ('p1', 'p2', 'p3')
         policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
         policy = policy.Policy(places_tup, policy_dict)
-        project_path = "C:/Users/calde/Desktop/ROBOT"
-        p_to_f_mapping = {'p1': 'folder.functions.count_Number1', 'p2': 'folder.functions.count_Number1',
-                          'p3': 'folder.functions.count_Number1', 'p4': 'folder.functions.count_Number2',
+        # project_path = "C:/Users/calde/Desktop/ROBOT"
+        project_path = "/home/pedroac/MEIC - THESIS/ROBOT"
+        p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number',
+                          'p3': 'folder.functions.count_Number', 'p4': 'folder.functions.count_Number2',
                           'p5': 'functions2.do_nothing'}
 
         my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
@@ -386,7 +414,7 @@ if __name__ == "__main__":
 
     elif test_case == "5":
         my_pn = pn.GSPN()
-        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4'], [0, 2, 0, 0])
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4'], [2, 2, 0, 0])
         trans = my_pn.add_transitions(['t1'], ['exp'], [1])
         arc_in = {'p1': ['t1'], 'p2': ['t1']}
         arc_out = {'t1': ['p3', 'p4']}
@@ -395,7 +423,8 @@ if __name__ == "__main__":
         places_tup = ('p1', 'p2', 'p3')
         policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
         policy = policy.Policy(places_tup, policy_dict)
-        project_path = "C:/Users/calde/Desktop/ROBOT"
+        # project_path = "C:/Users/calde/Desktop/ROBOT"
+        project_path = "/home/pedroac/MEIC - THESIS/ROBOT"
         p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number',
                           'p3': 'functions2.do_nothing', 'p4': 'functions2.do_nothing'}
 
@@ -427,9 +456,11 @@ if __name__ == "__main__":
                        (2, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0): {'t6': 0.8, 't7': 0.2}}
         policy = policy.Policy(policy_dict, places_tup)
 
-        project_path = "C:/Users/calde/Desktop/ROBOT"
+        # project_path = "C:/Users/calde/Desktop/ROBOT"
 
-        p_to_f_mapping = {'p1': 'folder.functions.count_Number1', 'p2': 'folder.functions.count_Number2',
+        project_path = "/home/pedroac/MEIC - THESIS/ROBOT"
+
+        p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'folder.functions.count_Number2',
                           'p3': 'folder.functions.count_Number3', 'p4': 'functions2.do_nothing',
                           'p5': 'folder.functions.count_Number5', 'p6': 'folder.functions.count_Number6',
                           'p7': 'folder.functions.count_Number7', 'p8': 'functions2.do_nothing',
