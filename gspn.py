@@ -1,6 +1,6 @@
 import time
 import numpy as np
-import gspn_analysis
+from . import gspn_analysis
 import sparse
 
 

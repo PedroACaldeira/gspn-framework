@@ -1,8 +1,8 @@
 from concurrent.futures.thread import ThreadPoolExecutor
-import gspn as pn
+from . import policy
+from . import gspn as pn
 import os
 import sys
-import policy
 import numpy as np
 
 '''
@@ -15,13 +15,16 @@ is on p2 and token 3 is on p2.
 
 class GSPNexecution(object):
 
-    def __init__(self, gspn, place_to_function_mapping, output_to_transition_mapping, policy, project_path):
+    def __init__(self, gspn, place_to_function_mapping, output_to_transition_mapping, policy, project_path,
+                 place_to_action_server_mapping):
         '''
         :param gspn: a previously created gspn
         :param place_to_function_mapping: dictionary where key is the place and the value is the function
         :param output_to_transition_mapping: dictionary where key is the output and the value is the transition
         :param policy: Policy object
         :param project_path: string with project path
+        :param place_to_action_server_mapping: dictionary where key is the name of the place and the value
+        is the name of the corresponding action server
 
         token_states is a list with len==number of tokens with Strings that represent the state of each token
         modules is a list with references to the imported functions that are used in the place to function mapping
@@ -32,6 +35,8 @@ class GSPNexecution(object):
 
         self.__place_to_function_mapping = place_to_function_mapping
         self.__output_to_transition_mapping = output_to_transition_mapping
+
+        self.__place_to_action_server_mapping = place_to_action_server_mapping
 
         self.__policy = policy
         self.__project_path = project_path
@@ -273,14 +278,14 @@ class GSPNexecution(object):
                         else:
                             self.__token_states[thread_number] = 'Free'
                         print("--------")
-                    # print("Token states", self.__token_states)
 
     def setup_execution(self):
         '''
         Prepares the following elements of the execution:
         1- token_states list and number of (initial) tokens;
         2- token_positions list;
-        3- project path.
+        3- project path;
+        4- Turns on action servers.
         '''
 
         # Setup token_states list and number of (initial) tokens
@@ -303,9 +308,26 @@ class GSPNexecution(object):
         path_name = self.get_path()
         self.__project_path = os.path.join(path_name)
         sys.path.append(self.__project_path)
+        # Turn on action servers
+        command="cd src/ ; python3 simple_action_server.py"
+        os.system("gnome-terminal -e 'bash -c \""+command+";bash\"'")
+        command="cd src/ ; python3 fibonacci_action_server.py"
+        os.system("gnome-terminal -e 'bash -c \""+command+";bash\"'")
+        # por baixo desta linha, as coisas estao bem
+        #for place in self.__place_to_action_server_mapping:
+        #    command="cd src/ ; python3 " + self.__place_to_action_server_mapping[place]
+        #    os.system("gnome-terminal -e 'bash -c \""+command+";bash\"'")
 
+def main():
 
-if __name__ == "__main__":
+    from concurrent.futures.thread import ThreadPoolExecutor
+    from . import policy
+    from . import gspn as pn
+    import os
+    import numpy as np
+    import rclpy
+    from rclpy.node import Node
+    import sys
 
     test_case = input("Enter case number to test: ")
 
@@ -338,14 +360,14 @@ if __name__ == "__main__":
 
         places_tup = ('p1', 'p2', 'p3')
         policy_dict = {(0, 1, 0): {'t3': 0.5, 't4': 0.5}}
-        policy = policy.Policy(places_tup, policy_dict)
+        pol = policy.Policy(places_tup, policy_dict)
         # project_path = "C:/Users/calde/Desktop/ROBOT"
         project_path = "/home/pedroac/MEIC - THESIS/ROBOT"
 
         p_to_f_mapping = {'p1': 'folder.functions.count_Number', 'p2': 'functions2.do_nothing',
                           'p3': 'functions2.do_nothing'}
 
-        my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path)
+        my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, pol, project_path)
         my_execution.setup_execution()
         my_execution.decide_function_to_execute()
 
@@ -471,5 +493,65 @@ if __name__ == "__main__":
         my_execution.setup_execution()
         my_execution.decide_function_to_execute()
 
+    elif test_case == "a":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2'], [1, 1])
+        trans = my_pn.add_transitions(['t1'], ['exp'], [1])
+        arc_in = {'p1': ['t1']}
+        arc_out = {'t1': ['p2']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+        # Since I'm not using imm transitions, this part is irrelevant
+        places_tup = ('p1', 'p2')
+        policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        # project_path = "C:/Users/calde/Desktop/ROBOT"
+        project_path = "/home/pedroac/ros2_ws/src"
+        p_to_f_mapping = {'p1': 'simple_action_function.main', 'p2': 'fibonacci_action_function.main'}
+        p_to_as = {'p1': 'simple_action_server.py', 'p2': 'fibonacci_action_server.py'}
+
+        my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path,
+                                     p_to_as)
+        my_execution.setup_execution()
+        my_execution.decide_function_to_execute()
+
+    elif test_case == "b":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10'],
+                                  [1, 0, 0, 0, 0, 1, 0, 1, 0, 0])
+        trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5', 't6'],
+                                      ['exp', 'exp', 'exp', 'exp', 'exp', 'exp'],
+                                      [1, 1, 1, 1, 1, 1])
+        arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p4':['t3'], 'p5':['t3'], 'p6':['t3'], 'p7':['t4'],
+                  'p8': ['t4'], 'p10': ['t5', 't6']}
+        arc_out = {'t1': ['p2'], 't2':['p3', 'p4', 'p5'], 't3': ['p7'], 't4':['p10', 'p9'],
+                   't5': ['p2'], 't6':['p1']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+        # Since I'm not using imm transitions, this part is irrelevant
+        places_tup = ('p1', 'p2')
+        policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        # project_path = "C:/Users/calde/Desktop/ROBOT"
+        project_path = "/home/pedroac/ros2_ws/src"
+        p_to_f_mapping = {'p1': 'p1_action_function.main', 'p2': 'p2_action_function.main',
+                          'p3': 'fibonacci_action_function.main', 'p4': 'p4_action_function.main',
+                          'p5': 'p5_action_function.main', 'p6': 'p6_action_function.main',
+                          'p7': 'p7_action_function.main', 'p8': 'p8_action_function.main',
+                          'p9': 'fibonacci_action_function.main', 'p10': 'p10_action_function.main'}
+        p_to_as = {'p1': 'simple_action_server.py', 'p2': 'simple_action_server.py',
+                   'p3': 'fibonacci_action_server.py', 'p4': 'simple_action_server.py',
+                   'p5': 'simple_action_server.py', 'p6': 'simple_action_server.py',
+                   'p7': 'simple_action_server.py', 'p8': 'simple_action_server.py',
+                   'p9': 'fibonacci_action_server.py', 'p10': 'simple_action_server.py'}
+
+        my_execution = GSPNexecution(my_pn, p_to_f_mapping, True, policy, project_path,
+                                     p_to_as)
+        my_execution.setup_execution()
+        my_execution.decide_function_to_execute()
+
+
     else:
         print("Sorry, that test is not available yet. Try again in a few months!")
+
+if __name__ == "__main__":
+
+    main()
