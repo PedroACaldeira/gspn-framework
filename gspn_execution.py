@@ -2,8 +2,8 @@ from concurrent.futures.thread import ThreadPoolExecutor
 import os
 import sys
 import numpy as np
-from gspn_framework import policy
-from gspn_framework import gspn as pn
+import policy
+import gspn as pn
 
 '''
 __token_states is a list with the states of each token ['Free', 'Occupied', 'Done'] means that token 1 is Free, token 2
@@ -305,7 +305,7 @@ class GSPNexecution(object):
         sys.path.append(self.__project_path)
 
 def main():
-    from gspn_framework import policy
+    import policy
 
     test_case = input("Enter case number to test: ")
 

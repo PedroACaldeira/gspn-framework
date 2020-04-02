@@ -18,6 +18,9 @@ class MinimalActionClient():
     def goal_done(self):
         return self.__done
 
+    def get_result(self):
+        return self.__result
+
     def goal_response_callback(self, future):
         goal_handle = future.result()
         if not goal_handle.accepted:
@@ -34,7 +37,6 @@ class MinimalActionClient():
 
     def get_result_callback(self, future):
         result = future.result().result
-        print("RESULT", result)
         status = future.result().status
         if status == GoalStatus.STATUS_SUCCEEDED:
             print(self._server_name+': Goal succeeded! Result: {0}'.format(result.sequence))
@@ -43,7 +45,7 @@ class MinimalActionClient():
             print(self._server_name+': Goal failed with status: {0}'.format(status))
 
         # Shutdown after receiving a result
-        # rclpy.shutdown()
+        rclpy.shutdown()
 
     def send_goal(self):
         # self.get_logger().info('Waiting for action server '+self._server_name)
@@ -74,9 +76,9 @@ def main(args=None):
     action_client_2.send_goal()
 
     rclpy.spin(client_node)
-
+    print("print executed")
     # client_node.destroy()
-    rclpy.shutdown()
+    # rclpy.shutdown()
 
 
 if __name__ == '__main__':
