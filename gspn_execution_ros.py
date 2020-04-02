@@ -234,13 +234,13 @@ class GSPNexecutionROS(object):
         '''
         import rclpy
         rclpy.init()
-        client_node = rclpy.create_node('minimal_action_client')
+
 
         while True:
             number_tokens = len(self.__token_positions)
             for action_client_number in range(number_tokens):
+                client_node = rclpy.create_node('minimal_action_client')
 
-                print("for AHHHHHHHHH-------------------")
                 if self.__token_states[action_client_number] == 'Free':
                     place = self.__token_positions[action_client_number]
                     splitted_path = self.__place_to_function_mapping[place].split(".")
@@ -251,7 +251,6 @@ class GSPNexecutionROS(object):
                     self.__action_clients[action_client_number] = client.MinimalActionClient(node=client_node, server_name=action_name)
                     self.__action_clients[action_client_number].send_goal()
                     rclpy.spin(client_node)
-                    print("---------------- cheguei aqui --------------")
 
 
                 if self.__token_states[action_client_number] == 'Occupied' and self.__action_clients[action_client_number].goal_done():
@@ -273,9 +272,6 @@ class GSPNexecutionROS(object):
                         self.__token_states[action_client_number] = 'Free'
                     rclpy.init()
                     print("--------")
-
-                print("mandei continuar------------------")
-                continue
 
     def setup_execution(self):
         '''
@@ -340,7 +336,7 @@ def main():
 
     elif test_case == "b":
         my_pn = pn.GSPN()
-        places = my_pn.add_places(['p1', 'p2'], [1, 1])
+        places = my_pn.add_places(['p1', 'p2'], [1, 0])
         trans = my_pn.add_transitions(['t1'], ['exp'], [1])
         arc_in = {'p1': ['t1']}
         arc_out = {'t1': ['p2']}
@@ -350,7 +346,7 @@ def main():
         policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
         policy = policy.Policy(places_tup, policy_dict)
         project_path = "/home/pedroac/ros2_ws/src"
-        p_to_c_mapping = {'p1': 'Simple.simple', 'p2': 'Fibonacci.fibonacci'}
+        p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2'}
         p_to_as = {'p1': 'simple_action_server.py', 'p2': 'fibonacci_action_server.py'}
 
         my_execution = GSPNexecutionROS(my_pn, p_to_c_mapping, True, policy, project_path,

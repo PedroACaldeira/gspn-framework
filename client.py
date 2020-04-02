@@ -37,6 +37,11 @@ class MinimalActionClient():
 
     def get_result_callback(self, future):
         result = future.result().result
+        if self._server_name == "fibonacci_1":
+            self.__result = 't1'
+        elif self._server_name == "fibonacci_2":
+            self.__result = None
+            
         status = future.result().status
         if status == GoalStatus.STATUS_SUCCEEDED:
             print(self._server_name+': Goal succeeded! Result: {0}'.format(result.sequence))
