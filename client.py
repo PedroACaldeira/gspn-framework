@@ -5,6 +5,8 @@ import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 
+import time
+
 
 class MinimalActionClient():
 
@@ -14,12 +16,25 @@ class MinimalActionClient():
 
         self.__result = None
         self.__done = False
+        self.__free = True
 
     def goal_done(self):
         return self.__done
 
+    def set_done(self, bool):
+        self.__done = bool
+
     def get_result(self):
         return self.__result
+
+    def set_result(self, val):
+        self.__result = val
+
+    def client_free(self):
+        return self.__free
+
+    def set_free(self, bool):
+        self.__free = bool
 
     def goal_response_callback(self, future):
         goal_handle = future.result()
@@ -41,7 +56,7 @@ class MinimalActionClient():
             self.__result = 't1'
         elif self._server_name == "fibonacci_2":
             self.__result = None
-            
+
         status = future.result().status
         if status == GoalStatus.STATUS_SUCCEEDED:
             print(self._server_name+': Goal succeeded! Result: {0}'.format(result.sequence))
@@ -50,15 +65,15 @@ class MinimalActionClient():
             print(self._server_name+': Goal failed with status: {0}'.format(status))
 
         # Shutdown after receiving a result
-        rclpy.shutdown()
+        # rclpy.shutdown()
 
-    def send_goal(self):
+    def send_goal(self, order):
         # self.get_logger().info('Waiting for action server '+self._server_name)
         print('Waiting for action server '+self._server_name)
         self._action_client.wait_for_server()
 
         goal_msg = Fibonacci.Goal()
-        goal_msg.order = 10
+        goal_msg.order = order
 
         # self.get_logger().info('Sending goal request to '+self._server_name)
         print('Sending goal request to '+self._server_name)
@@ -73,15 +88,43 @@ class MinimalActionClient():
 def main(args=None):
     rclpy.init(args=args)
     client_node = rclpy.create_node('minimal_action_client')
+    ac_list = []
 
     action_client_1 = MinimalActionClient(node=client_node, server_name='fibonacci_1')
     action_client_2 = MinimalActionClient(node=client_node, server_name='fibonacci_2')
 
-    action_client_1.send_goal()
-    action_client_2.send_goal()
+    ac_list.append(action_client_1)
+    ac_list.append(action_client_2)
+    # action_client_1.send_goal()
+    # action_client_2.send_goal()
 
-    rclpy.spin(client_node)
+    while True:
+        for i in range(len(ac_list)):
+
+            if ac_list[i].goal_done():
+                print("I'm done")
+                print("result", ac_list[i].get_result())
+                ac_list[i].set_done(False)
+                ac_list[i].set_result(None)
+                ac_list[i].set_free(True)
+                print("apply policy")
+
+            else:
+                if ac_list[i].client_free():
+                    ac_list[i].set_free(False)
+                    if i == 0:
+                        ac_list[i].send_goal(5)
+                    else:
+                        ac_list[i].send_goal(6)
+                    print("sent goal")
+                else:
+                    rclpy.spin_once(client_node)
+                    print("spinning")
+
+    # rclpy.spin(client_node)
     print("print executed")
+
+
     # client_node.destroy()
     # rclpy.shutdown()
 
