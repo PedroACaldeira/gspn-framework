@@ -7,6 +7,8 @@ import numpy as np
 
 from . import client
 
+import rclpy
+
 '''
 __token_states is a list with the states of each token ['Free', 'Occupied', 'Done'] means that token 1 is Free, token 2
 is Occupied and token 3 is Done.
@@ -45,6 +47,9 @@ class GSPNexecutionROS(object):
 
         self.__number_of_tokens = 0
         self.__action_clients = []
+
+        self.__ac_list = []
+        self.__client_node = 0
 
     def get_token_states(self):
         return self.__token_states
@@ -232,16 +237,44 @@ class GSPNexecutionROS(object):
         or not.
         max_workers = self.__number_of_tokens * 3 because of the case where we have new tokens being created.
         '''
-        import rclpy
-        rclpy.init()
-
 
         while True:
             number_tokens = len(self.__token_positions)
-            for action_client_number in range(number_tokens):
-                client_node = rclpy.create_node('minimal_action_client')
+            for i in range(number_tokens):
 
+                if self.__ac_list[i].goal_done():
+                    print("I'm done")
+                    print("result", self.__ac_list[i].get_result())
+
+
+                    result = self.__ac_list[i].get_result()
+                    print("apply policy", result)
+                    res_policy = self.apply_policy(i, result)
+                    print("return value of policy", res_policy)
+                    self.__ac_list[i].set_done(False)
+                    self.__ac_list[i].set_result(None)
+                    self.__ac_list[i].set_free(True)
+
+                else:
+                    if self.__ac_list[i].client_free():
+
+                        current_place = self.__token_positions[i]
+                        splitted_path = self.__place_to_function_mapping[current_place].split(".")
+                        action_type = splitted_path[0]
+                        action_name = splitted_path[1]
+                        self.__ac_list[i] = client.MinimalActionClient(node=self.__client_node, server_name=action_name)
+                        self.__ac_list[i].send_goal(5)
+                        self.__ac_list[i].set_free(False)
+                        print("sent goal")
+
+                    else:
+                        rclpy.spin_once(self.__client_node)
+                        print("spinning")
+
+
+                '''
                 if self.__token_states[action_client_number] == 'Free':
+                    client_node = rclpy.create_node('minimal_action_client_' + str(action_client_number))
                     place = self.__token_positions[action_client_number]
                     splitted_path = self.__place_to_function_mapping[place].split(".")
                     action_type = splitted_path[0]
@@ -272,6 +305,7 @@ class GSPNexecutionROS(object):
                         self.__token_states[action_client_number] = 'Free'
                     rclpy.init()
                     print("--------")
+                '''
 
     def setup_execution(self):
         '''
@@ -300,6 +334,26 @@ class GSPNexecutionROS(object):
             while j != marking[place]:
                 self.__token_positions.append(place)
                 j = j + 1
+
+        #Setup action servers
+        ## TODO:
+
+        # Setup action clients
+        rclpy.init()
+        self.__client_node = rclpy.create_node('minimal_action_client')
+        marking = self.__gspn.get_places()
+        for place in marking:
+            splitted_path = self.__place_to_function_mapping[place].split(".")
+            action_type = splitted_path[0]
+            server_name = splitted_path[1]
+            value = marking[place]
+            i = 0
+            while i < value:
+                action_client = client.MinimalActionClient(node=self.__client_node, server_name=server_name)
+                self.__ac_list.append(action_client)
+                i = i + 1
+
+
 
 def main():
 
@@ -336,7 +390,7 @@ def main():
 
     elif test_case == "b":
         my_pn = pn.GSPN()
-        places = my_pn.add_places(['p1', 'p2'], [1, 0])
+        places = my_pn.add_places(['p1', 'p2'], [1, 1])
         trans = my_pn.add_transitions(['t1'], ['exp'], [1])
         arc_in = {'p1': ['t1']}
         arc_out = {'t1': ['p2']}
