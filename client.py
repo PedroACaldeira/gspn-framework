@@ -15,14 +15,7 @@ class MinimalActionClient():
         self._action_client = ActionClient(node, Fibonacci, server_name)
 
         self.__result = None
-        self.__done = False
-        self.__free = True
-
-    def goal_done(self):
-        return self.__done
-
-    def set_done(self, bool):
-        self.__done = bool
+        self.__state = "Free"
 
     def get_result(self):
         return self.__result
@@ -30,11 +23,11 @@ class MinimalActionClient():
     def set_result(self, val):
         self.__result = val
 
-    def client_free(self):
-        return self.__free
+    def get_state(self):
+        return self.__state
 
-    def set_free(self, bool):
-        self.__free = bool
+    def set_state(self, new_state):
+        self.__state = new_state
 
     def goal_response_callback(self, future):
         goal_handle = future.result()
@@ -55,12 +48,12 @@ class MinimalActionClient():
         if self._server_name == "fibonacci_1":
             self.__result = 't1'
         elif self._server_name == "fibonacci_2":
-            self.__result = None
+            self.__result = 't1'
 
         status = future.result().status
         if status == GoalStatus.STATUS_SUCCEEDED:
             print(self._server_name+': Goal succeeded! Result: {0}'.format(result.sequence))
-            self.__done = True
+            self.__state = "Done"
         else:
             print(self._server_name+': Goal failed with status: {0}'.format(status))
 

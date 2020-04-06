@@ -48,7 +48,6 @@ class GSPNexecutionROS(object):
         self.__number_of_tokens = 0
         self.__action_clients = []
 
-        self.__ac_list = []
         self.__client_node = 0
 
     def get_token_states(self):
@@ -119,7 +118,7 @@ class GSPNexecutionROS(object):
                     self.__token_positions.append(new_place)
                     self.__token_states.append('Free')
                     self.__number_of_tokens = self.__number_of_tokens + 1
-                    self.__action_clients.append(self.__number_of_tokens)
+                    self.__action_clients.append(client.MinimalActionClient(node=self.__client_node, server_name="provisional"))
             self.__gspn.fire_transition(transition)
 
         # many to 1
@@ -137,9 +136,11 @@ class GSPNexecutionROS(object):
             for place in translation_marking:
                 for pos_index in range(len(self.__token_positions)):
                     if self.__token_positions[pos_index] == place:
-                        if self.__token_states[pos_index] == 'Waiting':
+                        if self.__action_clients[pos_index].get_state() == 'Waiting':
                             number_of_waiting = number_of_waiting + 1
                             break
+            # -1 porque só precisas de ter x-1 a espera. quando o numero x
+            # aparece, podes disparar
             if number_of_waiting == len(translation_marking) - 1:
                 check_flag = True
             else:
@@ -157,10 +158,10 @@ class GSPNexecutionROS(object):
                             if place_with_token_to_delete == self.__token_positions[j]:
                                 index_to_del = j
                                 self.__token_positions[index_to_del] = "null"
-                                self.__token_states[index_to_del] = "VOID"
+                                self.__action_clients[index_to_del].set_state("VOID")
                                 break
             else:
-                self.__token_states[token_id] = 'Waiting'
+                self.__action_clients[token_id].set_state("Waiting")
 
         # many to many
         elif len(arcs[0]) > 1 and len(arcs[1][index]) > 1:
@@ -181,7 +182,7 @@ class GSPNexecutionROS(object):
                         self.__token_positions.append(new_place)
                         self.__token_states.append('Free')
                         self.__number_of_tokens = self.__number_of_tokens + 1
-                        self.__action_clients.append(self.__number_of_tokens)
+                        self.__action_clients.append(client.MinimalActionClient(node=self.__client_node, server_name="provisional"))
                         self.__gspn.fire_transition(transition)
 
                 # Delete tokens from previous places
@@ -233,86 +234,52 @@ class GSPNexecutionROS(object):
 
     def decide_function_to_execute(self):
         '''
-        Main execution cycle. At every instant, the threads check whether the tokens are done with their functions
-        or not.
-        max_workers = self.__number_of_tokens * 3 because of the case where we have new tokens being created.
+        Main execution cycle. The execution is done step by step, meaning that there is no real paralelism.
+        At each moment, we see whether the action client goal is complete and if not, we run spin_once()
         '''
 
         while True:
             number_tokens = len(self.__token_positions)
             for i in range(number_tokens):
-
-                if self.__ac_list[i].goal_done():
-                    print("I'm done")
-                    print("result", self.__ac_list[i].get_result())
-
-
-                    result = self.__ac_list[i].get_result()
-                    print("apply policy", result)
-                    res_policy = self.apply_policy(i, result)
-                    print("return value of policy", res_policy)
-                    self.__ac_list[i].set_done(False)
-                    self.__ac_list[i].set_result(None)
-                    self.__ac_list[i].set_free(True)
-
-                else:
-                    if self.__ac_list[i].client_free():
-
-                        current_place = self.__token_positions[i]
-                        splitted_path = self.__place_to_function_mapping[current_place].split(".")
-                        action_type = splitted_path[0]
-                        action_name = splitted_path[1]
-                        self.__ac_list[i] = client.MinimalActionClient(node=self.__client_node, server_name=action_name)
-                        self.__ac_list[i].send_goal(5)
-                        self.__ac_list[i].set_free(False)
-                        print("sent goal")
-
-                    else:
-                        rclpy.spin_once(self.__client_node)
-                        print("spinning")
-
-
-                '''
-                if self.__token_states[action_client_number] == 'Free':
-                    client_node = rclpy.create_node('minimal_action_client_' + str(action_client_number))
-                    place = self.__token_positions[action_client_number]
-                    splitted_path = self.__place_to_function_mapping[place].split(".")
+                if self.__action_clients[i].get_state() == "Free":
+                    current_place = self.__token_positions[i]
+                    splitted_path = self.__place_to_function_mapping[current_place].split(".")
                     action_type = splitted_path[0]
                     action_name = splitted_path[1]
+                    self.__action_clients[i] = client.MinimalActionClient(node=self.__client_node, server_name=action_name)
+                    self.__action_clients[i].send_goal(5)
+                    self.__action_clients[i].set_state("Occupied")
+                    print("sent goal")
 
-                    self.__token_states[action_client_number] = 'Occupied'
-                    self.__action_clients[action_client_number] = client.MinimalActionClient(node=client_node, server_name=action_name)
-                    self.__action_clients[action_client_number].send_goal()
-                    rclpy.spin(client_node)
+                if self.__action_clients[i].get_state() == "Occupied":
+                    rclpy.spin_once(self.__client_node)
+                    print("spinning")
 
+                if self.__action_clients[i].get_state() == "Done":
+                    result = self.__action_clients[i].get_result()
+                    res_policy = self.apply_policy(i, result)
 
-                if self.__token_states[action_client_number] == 'Occupied' and self.__action_clients[action_client_number].goal_done():
-                    print("i am done")
-                    self.__token_states[action_client_number] = 'Done'
-
-
-                if self.__token_states[action_client_number] == 'Done':
-                    print("result", self.__action_clients[action_client_number].get_result())
-                    res_policy = self.apply_policy(action_client_number, self.__action_clients[action_client_number].get_result())
-
-                    if self.__token_states[action_client_number] == 'Waiting':
-                        print("i am waiting")
+                    if self.__action_clients[i].get_state() == "Waiting":
+                        print("I am waiting", i)
 
                     elif res_policy == -2:
-                        # This state is achieved when the token reaches a place with no connections.
-                        self.__token_states[action_client_number] = 'Inactive'
+                        print("The node doesn't have any output arcs.", i)
+                        self.__action_clients[i].set_state("Inactive")
+                        self.__action_clients[i].set_result(None)
                     else:
-                        self.__token_states[action_client_number] = 'Free'
-                    rclpy.init()
-                    print("--------")
-                '''
+                        print("return value of policy", res_policy)
+                        self.__action_clients[i].set_state("Free")
+                        self.__action_clients[i].set_result(None)
+                    print("------------")
+
 
     def setup_execution(self):
         '''
         Prepares the following elements of the execution:
         1- token_states list and number of (initial) tokens;
         2- token_positions list;
-        3- project path.
+        3- project path;
+        4- initial action clients.
         '''
         # Setup project path
         path_name = self.get_path()
@@ -324,7 +291,6 @@ class GSPNexecutionROS(object):
         i = 0
         while i < self.__number_of_tokens:
             self.__token_states.append('Free')
-            self.__action_clients.append(i)
             i = i + 1
 
         # Setup token_positions list
@@ -350,7 +316,7 @@ class GSPNexecutionROS(object):
             i = 0
             while i < value:
                 action_client = client.MinimalActionClient(node=self.__client_node, server_name=server_name)
-                self.__ac_list.append(action_client)
+                self.__action_clients.append(action_client)
                 i = i + 1
 
 
@@ -409,6 +375,46 @@ def main():
         my_execution.decide_function_to_execute()
 
     elif test_case == "c":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2', 'p3'], [1, 1, 0])
+        trans = my_pn.add_transitions(['t1'], ['exp'], [1])
+        arc_in = {'p1': ['t1']}
+        arc_out = {'t1': ['p2', 'p3']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+        # Since I'm not using imm transitions, this part is irrelevant
+        places_tup = ('p1', 'p2')
+        policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        project_path = "/home/pedroac/ros2_ws/src"
+        p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2', 'p3':'Fibonacci.fibonacci_3'}
+        p_to_as = {'p1': 'simple_action_server.py', 'p2': 'fibonacci_action_server.py'}
+
+        my_execution = GSPNexecutionROS(my_pn, p_to_c_mapping, True, policy, project_path,
+                                     p_to_as)
+        my_execution.setup_execution()
+        my_execution.decide_function_to_execute()
+
+    elif test_case == "d":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2', 'p3'], [1, 1, 0])
+        trans = my_pn.add_transitions(['t1'], ['exp'], [1])
+        arc_in = {'p1': ['t1'], 'p2':['t1']}
+        arc_out = {'t1': ['p3']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+        # Since I'm not using imm transitions, this part is irrelevant
+        places_tup = ('p1', 'p2')
+        policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        project_path = "/home/pedroac/ros2_ws/src"
+        p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2', 'p3':'Fibonacci.fibonacci_3'}
+        p_to_as = {'p1': 'simple_action_server.py', 'p2': 'fibonacci_action_server.py'}
+
+        my_execution = GSPNexecutionROS(my_pn, p_to_c_mapping, True, policy, project_path,
+                                     p_to_as)
+        my_execution.setup_execution()
+        my_execution.decide_function_to_execute()
+
+    elif test_case == "f":
         my_pn = pn.GSPN()
         places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10'],
                                   [1, 0, 0, 0, 0, 1, 0, 1, 0, 0])
