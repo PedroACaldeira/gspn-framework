@@ -261,9 +261,11 @@ class GSPNexecutionROS(object):
     def setup_execution(self):
         '''
         Prepares the following elements of the execution:
-        2- token_positions list;
-        3- project path;
-        4- initial action clients.
+        1- project path;
+        2- number of initial tokens;
+        3- token_positions list;
+        4- action servers
+        5- initial action clients.
         '''
         # Setup project path
         path_name = self.get_path()
@@ -313,7 +315,6 @@ def main():
     import sys
 
     test_case = input("Enter case number to test: ")
-
 
     if test_case == "b":
         my_pn = pn.GSPN()
