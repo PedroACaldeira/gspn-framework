@@ -180,7 +180,6 @@ class GSPNexecutionROS(object):
                     else:
                         new_place = self.__gspn.index_to_places[arcs[1][index][i]]
                         self.__token_positions.append(new_place)
-                        self.__token_states.append('Free')
                         self.__number_of_tokens = self.__number_of_tokens + 1
                         self.__action_clients.append(client.MinimalActionClient(node=self.__client_node, server_name="provisional"))
                         self.__gspn.fire_transition(transition)
@@ -192,10 +191,10 @@ class GSPNexecutionROS(object):
                         if place_with_token_to_delete == self.__token_positions[j]:
                             index_to_del = j
                             self.__token_positions[index_to_del] = "null"
-                            self.__token_states[index_to_del] = "VOID"
+                            self.__action_clients[index_to_del].set_state("VOID")
                             break
             else:
-                self.__token_states[token_id] = 'Waiting'
+                self.__action_clients[token_id].set_state("Waiting")
 
     def apply_policy(self, token_id, result):
         '''
@@ -407,6 +406,26 @@ def main():
         policy = policy.Policy(places_tup, policy_dict)
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2', 'p3':'Fibonacci.fibonacci_3'}
+        p_to_as = {'p1': 'simple_action_server.py', 'p2': 'fibonacci_action_server.py'}
+
+        my_execution = GSPNexecutionROS(my_pn, p_to_c_mapping, True, policy, project_path,
+                                     p_to_as)
+        my_execution.setup_execution()
+        my_execution.decide_function_to_execute()
+
+    elif test_case == "e":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4'], [2, 0, 0, 0])
+        trans = my_pn.add_transitions(['t1'], ['exp'], [1])
+        arc_in = {'p1': ['t1'], 'p2':['t1']}
+        arc_out = {'t1': ['p3', 'p4']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+        # Since I'm not using imm transitions, this part is irrelevant
+        places_tup = ('p1', 'p2')
+        policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        project_path = "/home/pedroac/ros2_ws/src"
+        p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2', 'p3':'Fibonacci.fibonacci_3', 'p4':'Fibonacci.fibonacci_4'}
         p_to_as = {'p1': 'simple_action_server.py', 'p2': 'fibonacci_action_server.py'}
 
         my_execution = GSPNexecutionROS(my_pn, p_to_c_mapping, True, policy, project_path,
