@@ -6,6 +6,7 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 
 import time
+import random
 
 
 class MinimalActionClient():
@@ -44,11 +45,29 @@ class MinimalActionClient():
         print('Received feedback: {0}'.format(feedback.feedback.sequence))
 
     def get_result_callback(self, future):
+
         result = future.result().result
         if self._server_name == "fibonacci_1":
             self.__result = 't1'
         elif self._server_name == "fibonacci_2":
             self.__result = 't1'
+        elif self._server_name == "fibonacci_3":
+            self.__result = None
+        elif self._server_name == "fibonacci_4":
+            self.__result = 't3'
+        elif self._server_name == "fibonacci_5":
+            self.__result = 't3'
+        elif self._server_name == "fibonacci_6":
+            self.__result = 't3'
+        elif self._server_name == "fibonacci_7":
+            self.__result = 't4'
+        elif self._server_name == "fibonacci_8":
+            self.__result = 't4'
+        elif self._server_name == "fibonacci_9":
+            self.__result = None
+        elif self._server_name == "fibonacci_10":
+            self.__result = 't6'
+
 
         status = future.result().status
         if status == GoalStatus.STATUS_SUCCEEDED:
