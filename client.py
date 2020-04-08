@@ -11,9 +11,10 @@ import random
 
 class MinimalActionClient():
 
-    def __init__(self, node, server_name):
+    def __init__(self, action_type, node, server_name):
         self._server_name = server_name
-        self._action_client = ActionClient(node, Fibonacci, server_name)
+        if action_type=="Fibonacci":
+            self._action_client = ActionClient(node, Fibonacci, server_name)
 
         self.__result = None
         self.__state = "Free"

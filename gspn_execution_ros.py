@@ -7,10 +7,7 @@ import numpy as np
 from . import client
 import rclpy
 
-
-
-
-class GSPNexecutionROS(object):
+class GSPNExecutionROS(object):
 
     def __init__(self, gspn, place_to_client_mapping, output_to_transition_mapping, policy, project_path):
         '''
@@ -110,7 +107,7 @@ class GSPNexecutionROS(object):
                     new_place = self.__gspn.index_to_places[arcs[1][index][i]]
                     self.__token_positions.append(new_place)
                     self.__number_of_tokens = self.__number_of_tokens + 1
-                    self.__action_clients.append(client.MinimalActionClient(node=self.__client_node, server_name="provisional"))
+                    self.__action_clients.append(client.MinimalActionClient("provisional", node=self.__client_node, server_name="provisional"))
             self.__gspn.fire_transition(transition)
 
         # many to 1
@@ -173,7 +170,7 @@ class GSPNexecutionROS(object):
                         new_place = self.__gspn.index_to_places[arcs[1][index][i]]
                         self.__token_positions.append(new_place)
                         self.__number_of_tokens = self.__number_of_tokens + 1
-                        self.__action_clients.append(client.MinimalActionClient(node=self.__client_node, server_name="provisional"))
+                        self.__action_clients.append(client.MinimalActionClient("provisional", node=self.__client_node, server_name="provisional"))
                         self.__gspn.fire_transition(transition)
 
                 # Delete tokens from previous places
@@ -262,7 +259,7 @@ class GSPNexecutionROS(object):
             value = marking[place]
             i = 0
             while i < value:
-                action_client = client.MinimalActionClient(node=self.__client_node, server_name=server_name)
+                action_client = client.MinimalActionClient(action_type, node=self.__client_node, server_name=server_name)
                 self.__action_clients.append(action_client)
                 i = i + 1
 
@@ -278,8 +275,8 @@ class GSPNexecutionROS(object):
                     current_place = self.__token_positions[i]
                     splitted_path = self.__place_to_client_mapping[current_place].split(".")
                     action_type = splitted_path[0]
-                    action_name = splitted_path[1]
-                    self.__action_clients[i] = client.MinimalActionClient(node=self.__client_node, server_name=action_name)
+                    server_name = splitted_path[1]
+                    self.__action_clients[i] = client.MinimalActionClient(action_type, node=self.__client_node, server_name=server_name)
                     self.__action_clients[i].send_goal(5)
                     self.__action_clients[i].set_state("Occupied")
                     print("sent goal")
@@ -330,7 +327,7 @@ def main():
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2'}
 
-        my_execution = GSPNexecutionROS(my_pn, p_to_c_mapping, True, policy, project_path)
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path)
         my_execution.ros_gspn_execution()
 
     elif test_case == "2":
@@ -347,7 +344,7 @@ def main():
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2', 'p3':'Fibonacci.fibonacci_3'}
 
-        my_execution = GSPNexecutionROS(my_pn, p_to_c_mapping, True, policy, project_path)
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path)
         my_execution.ros_gspn_execution()
 
     elif test_case == "3":
@@ -364,7 +361,7 @@ def main():
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2', 'p3':'Fibonacci.fibonacci_3'}
 
-        my_execution = GSPNexecutionROS(my_pn, p_to_c_mapping, True, policy, project_path)
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path)
         my_execution.ros_gspn_execution()
 
     elif test_case == "4":
@@ -381,7 +378,7 @@ def main():
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2', 'p3':'Fibonacci.fibonacci_3', 'p4':'Fibonacci.fibonacci_4'}
 
-        my_execution = GSPNexecutionROS(my_pn, p_to_c_mapping, True, policy, project_path)
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path)
         my_execution.ros_gspn_execution()
 
     elif test_case == "5":
@@ -408,7 +405,7 @@ def main():
                           'p7': 'Fibonacci.fibonacci_7', 'p8': 'Fibonacci.fibonacci_8',
                           'p9': 'Fibonacci.fibonacci_9', 'p10': 'Fibonacci.fibonacci_10'}
 
-        my_execution = GSPNexecutionROS(my_pn, p_to_c_mapping, True, policy, project_path)
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path)
         my_execution.ros_gspn_execution()
 
 
