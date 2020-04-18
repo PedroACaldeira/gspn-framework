@@ -38,7 +38,9 @@
       // Create nodes for the places
       var parsed_places = JSON.parse('{{data.get_places() | tojson}}');
       for(place in parsed_places) {
-        nodes.add({id:place, shape:'circularImage', title:place, physics:'false', label:place, image:'C:\Users\calde\Desktop\Tese de Mestrado (Ano 5)\gspn-framework\images\ token_1.png'});
+        var marking = parsed_places[place];
+        image_link = 'https://raw.githubusercontent.com/PedroACaldeira/gspn-framework/master/images/token_' + marking + '.png';
+        nodes.add({id:place, shape:'circularImage', title:place, physics:'false', label:place, image:image_link});
       }
 
       // Create nodes for the transitions
