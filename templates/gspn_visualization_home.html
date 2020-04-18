@@ -5,8 +5,8 @@
   <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <style type="text/css">
     #mynetwork {
-      width: 600px;
-      height: 400px;
+      width: 1500px;
+      height: 600px;
       border: 1px solid lightgray;
     }
   </style>
@@ -16,6 +16,8 @@
 
     <h1> GSPN Visualization Module </h1>
     <p> This module is used for the offline visualization of a GSPN simulation. </p>
+    <p> You can drag the places and the transitions for any place you want. </p>
+    <p> You can also zoom in the network and move it around. </p>
     <p> Note: No real execution is performed. </p>
 
     <div id='info_section'>
@@ -25,23 +27,49 @@
 
     <div id="mynetwork"></div>
     <script type="text/javascript">
-      var transitions = {{ data.get_transitions() }};
-      var places = {{ data.get_places() }};
+      function decodeHtml(html) {
+        var txt = document.createElement("textarea");
+        txt.innerHTML = html;
+        return txt.value;
+      }
       var nodes = new vis.DataSet({});
       var edges = new vis.DataSet({});
-      //var places = {{ data.get_places() }};
-      //var transitions = {{ data.get_transitions() }};
 
-      for(place in arcs_in) {
-        nodes.add({id:place+1, text:'place1'});
-        for(transition in arcs_in[place]) {
-          nodes.add({id:-(transition + 1), text: 't' + transition + 1, shape:'square'});
-          edges.add({from:place+1, to:-(transition + 1), arrows:'to'});
+      // Create nodes for the places
+      var parsed_places = JSON.parse('{{data.get_places() | tojson}}');
+      for(place in parsed_places) {
+        nodes.add({id:place, title:place, physics:'false', label:place});
+      }
+
+      // Create nodes for the transitions
+      var parsed_transitions = JSON.parse('{{data.get_transitions() | tojson}}');
+      for(transition in parsed_transitions) {
+        nodes.add({id:transition, title:transition, shape:'square', physics:'false', label:transition});
+      }
+
+      // Get edge information
+      var arcs_in = {{ data.get_arcs_dict()[0] }}
+      var arcs_out = {{ data.get_arcs_dict()[1] }}
+
+      // Create edges from places to transitions
+      for(place in arcs_in){
+        var parsed_places_map = JSON.parse('{{data.index_to_places | tojson}}');
+        var place_id = parsed_places_map[place];
+        for(transition in arcs_in[place]){
+          var parsed_transitions_map = JSON.parse('{{data.index_to_transitions | tojson}}');
+          var transition_id = parsed_transitions_map[arcs_in[place][transition]];
+          edges.add({from:place_id, to:transition_id, arrows:'to'});
         }
       }
+
+      // Create edges from transitions to places
       for(transition in arcs_out){
+        var parsed_transitions_map = JSON.parse('{{data.index_to_transitions | tojson}}');
+        var transition_id = parsed_transitions_map[transition];
         for(place in arcs_out[transition]){
-          edges.add({from:-(transition+1), to:place + 1, arrows:'to'});
+          var parsed_places_map = JSON.parse('{{data.index_to_places | tojson}}');
+          var place_id = parsed_places_map[arcs_out[transition][place]];
+          edges.add({from:transition_id, to:place_id, arrows:'to'});
         }
       }
 
