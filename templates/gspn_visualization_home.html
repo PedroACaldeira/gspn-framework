@@ -16,7 +16,7 @@
 
     <h1> GSPN Visualization Module </h1>
     <p> This module is used for the offline visualization of a GSPN simulation. </p>
-    <p> You can drag the places and the transitions for any place you want. </p>
+    <p> You can drag the places and the transitions to any place you want. </p>
     <p> You can also zoom in the network and move it around. </p>
     <p> Note: No real execution is performed. </p>
 
@@ -38,13 +38,13 @@
       // Create nodes for the places
       var parsed_places = JSON.parse('{{data.get_places() | tojson}}');
       for(place in parsed_places) {
-        nodes.add({id:place, title:place, physics:'false', label:place});
+        nodes.add({id:place, shape:'circularImage', title:place, physics:'false', label:place, image:'https://q-cf.bstatic.com/images/hotel/max1024x768/220/220680927.jpg'});
       }
 
       // Create nodes for the transitions
       var parsed_transitions = JSON.parse('{{data.get_transitions() | tojson}}');
       for(transition in parsed_transitions) {
-        nodes.add({id:transition, title:transition, shape:'square', physics:'false', label:transition});
+        nodes.add({id:transition, title:transition, shape:'square', physics:'false', label:transition, size:10});
       }
 
       // Get edge information
