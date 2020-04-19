@@ -8,6 +8,7 @@
       width: 1500px;
       height: 600px;
       border: 1px solid lightgray;
+      background: lightgray;
     }
   </style>
   <body>
@@ -40,13 +41,20 @@
       for(place in parsed_places) {
         var marking = parsed_places[place];
         image_link = 'https://raw.githubusercontent.com/PedroACaldeira/gspn-framework/master/images/token_' + marking + '.png';
-        nodes.add({id:place, shape:'circularImage', title:place, physics:'false', label:place, image:image_link});
+        nodes.add({id:place, shape:'circularImage', color:'black', title:place, physics:'false', label:place, image:image_link});
       }
 
       // Create nodes for the transitions
       var parsed_transitions = JSON.parse('{{data.get_transitions() | tojson}}');
+      console.log(parsed_transitions);
       for(transition in parsed_transitions) {
-        nodes.add({id:transition, title:transition, shape:'square', physics:'false', label:transition, size:10});
+        console.log(parsed_transitions[transition][0]);
+        if(parsed_transitions[transition][0] == 'exp') {
+          nodes.add({id:transition, title:transition, color:'white', shape:'square', physics:'false', label:transition, size:10});
+        }
+        else {
+          nodes.add({id:transition, title:transition, color:'black', shape:'square', physics:'false', label:transition, size:10});
+        }
       }
 
       // Get edge information
@@ -60,7 +68,7 @@
         for(transition in arcs_in[place]){
           var parsed_transitions_map = JSON.parse('{{data.index_to_transitions | tojson}}');
           var transition_id = parsed_transitions_map[arcs_in[place][transition]];
-          edges.add({from:place_id, to:transition_id, arrows:'to'});
+          edges.add({from:place_id, to:transition_id, arrows:'to', color:'black'});
         }
       }
 
@@ -71,7 +79,7 @@
         for(place in arcs_out[transition]){
           var parsed_places_map = JSON.parse('{{data.index_to_places | tojson}}');
           var place_id = parsed_places_map[arcs_out[transition][place]];
-          edges.add({from:transition_id, to:place_id, arrows:'to'});
+          edges.add({from:transition_id, to:place_id, arrows:'to', color:'black'});
         }
       }
 
