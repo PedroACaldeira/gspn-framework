@@ -14,17 +14,17 @@
     {% extends "gspn_visualization_template.html" %}
     {% block content %}
 
-    <h1> GSPN Visualization Module </h1>
     <p> This module is used for the offline visualization of a GSPN simulation. </p>
     <p> You can drag the places and the transitions to any place you want. </p>
     <p> You can also zoom in the network and move it around. </p>
     <p> Note: No real execution is performed. </p>
 
-    <div id='info_section'>
-      <p>{{ data.get_places() }}</p>
-      <p>{{ data.get_transitions() }}</p>
-    </div>
+    <div class='container'>
+          <form>
+              <a href=# id=test><button class='btn btn-default'>Simulate 1 Step</button></a>
+          </form>
 
+    </div>
     <div id="mynetwork"></div>
     <script type="text/javascript">
       function decodeHtml(html) {
@@ -85,6 +85,26 @@
       var network = new vis.Network(container, data, options);
     </script>
 
+    </body>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script type=text/javascript>
+            $(function() {
+              $('a#test').bind('click', function() {
+                $.getJSON('/background_process_test', function(data) {
+                  console.log(data);
+                  for(place in data) {
+                    var marking = data[place];
+                    image_link = 'https://raw.githubusercontent.com/PedroACaldeira/gspn-framework/master/images/token_' + marking + '.png';
+                    nodes.update({id:place, image:image_link});
+                  }
+                });
+                return false;
+              });
+            });
+    </script>
+
+
+
     {% endblock %}
-  </body>
+
 </html>
