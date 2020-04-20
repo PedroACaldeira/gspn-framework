@@ -5,8 +5,9 @@
   <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <style type="text/css">
     #mynetwork {
-      width: 1500px;
-      height: 600px;
+      display: flex;
+      width:100%;
+      height:500px;
       border: 1px solid lightgray;
       background: lightgray;
     }
@@ -15,24 +16,14 @@
     {% extends "gspn_visualization_template.html" %}
     {% block content %}
 
-    <p> This module is used for the offline visualization of a GSPN simulation. </p>
-    <p> You can drag the places and the transitions to any place you want. </p>
-    <p> You can also zoom in the network and move it around. </p>
-    <p> Note: No real execution is performed. </p>
-
     <div class='container'>
           <form>
               <a href=# id=test><button class='btn btn-default'>Simulate 1 Step</button></a>
           </form>
-
     </div>
     <div id="mynetwork"></div>
     <script type="text/javascript">
-      function decodeHtml(html) {
-        var txt = document.createElement("textarea");
-        txt.innerHTML = html;
-        return txt.value;
-      }
+
       var nodes = new vis.DataSet({});
       var edges = new vis.DataSet({});
 

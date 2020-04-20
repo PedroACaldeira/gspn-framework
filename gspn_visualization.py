@@ -28,12 +28,23 @@ def simulate_token_game():
     my_pn.simulate(nsteps=10, simulate_wait=True)
 
 
-if __name__ == "__main__":  # on running python app.py
+if __name__ == "__main__":
+
+    # Insert your GSPN inside this block
     my_pn = pn.GSPN()
-    places = my_pn.add_places(['p1', 'p2', 'p3', 'p4'], [1, 1, 0, 1])
-    trans = my_pn.add_transitions(['t1'], ['exp'], [1])
-    arc_in = {'p1': ['t1'], 'p2': ['t1']}
-    arc_out = {'t1': ['p3', 'p4']}
+    places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12'],
+                              [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1])
+    trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10'],
+                                  ['exp', 'exp', 'exp', 'exp', 'exp', 'imm', 'imm', 'exp', 'exp', 'exp'],
+                                  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+
+    arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p3': ['t3'], 'p5': ['t4'], 'p6': ['t4'], 'p7': ['t5'],
+              'p8': ['t6', 't7'], 'p9': ['t8', 't9'], 'p10': ['t10'], 'p11': ['t4'], 'p12': ['t5']}
+
+    arc_out = {'t1': ['p2'], 't2': ['p3'], 't3': ['p4', 'p5', 'p6'], 't4': ['p7'], 't5': ['p8', 'p9'], 't6': ['p1'],
+               't7': ['p9'], 't8': ['p2'], 't9': ['p10'], 't10': ['p1']}
+
     a, b = my_pn.add_arcs(arc_in, arc_out)
+    # End Insertion Block
 
     app.run(debug=True)
