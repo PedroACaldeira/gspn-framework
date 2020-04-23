@@ -17,6 +17,19 @@ def background_process_test():
     return jsonify(my_pn.get_current_marking())
 
 
+@app.route('/background_reset_simulation')
+def background_reset_simulation():
+    my_pn.reset_simulation()
+    return jsonify(my_pn.get_current_marking())
+
+
+@app.route('/background_check_liveness')
+def background_check_liveness():
+    my_pn.init_analysis()
+    liveness_check = my_pn.liveness()
+    return jsonify(liveness_check)
+
+
 @app.route("/about")
 def about():
     return render_template("gspn_visualization_about.html")
@@ -29,7 +42,6 @@ def simulate_token_game():
 
 
 if __name__ == "__main__":
-
     # Insert your GSPN inside this block
     my_pn = pn.GSPN()
     places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12'],
