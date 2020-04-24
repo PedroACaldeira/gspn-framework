@@ -3,31 +3,16 @@
   <head>
   <title>Network</title>
   <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-  <style type="text/css">
-    #mynetwork {
-      display: flex;
-      width:100%;
-      height:500px;
-      border: 1px solid lightgray;
-      background: lightgray;
-    }
-  </style>
+  <meta charset="utf-8">
+  <link rel="stylesheet" type="text/css" href="./static/css/gspn_visualization_template.css">
   <body>
     {% extends "gspn_visualization_template.html" %}
     {% block content %}
 
-    <div class='container'>
-          <form>
-              <a href=# id=test><button class='btn btn-default'>Simulate 1 Step</button></a>
-          </form>
-
-          <form>
-              <a href=# id=reset><button class='btn btn-default'>Reset Simulation</button></a>
-          </form>
-
-          <form>
-              <a href=# id=checkLiveness><button class='btn btn-default'>Check Liveness</button></a>
-          </form>
+    <div class='button_container'>
+              <a href=# id=test><button class='new-button-green'>Simulate 1 Step</button></a>
+              <a href=# id=reset><button class='new-button-green new-button-red'>Reset Simulation</button></a>
+              <a href=# id=checkLiveness><button class='btn new-button-green'>Check Liveness</button></a>
     </div>
     <div id="mynetwork"></div>
     <script type="text/javascript">
