@@ -13,6 +13,7 @@
               <a href=# id=test><button class='new-button-green'>Simulate 1 Step</button></a>
               <a href=# id=reset><button class='new-button-green new-button-red'>Reset Simulation</button></a>
               <a href=# id=checkLiveness><button class='btn new-button-green'>Check Liveness</button></a>
+              <a id="liveResult"></a>
     </div>
     <div id="mynetwork"></div>
     <script type="text/javascript">
@@ -106,6 +107,7 @@
               $('a#checkLiveness').bind('click', function() {
                 $.getJSON('/background_check_liveness', function(data) {
                   console.log(data);
+                  document.getElementById('liveResult').innerHTML = data;
                 });
                 return false;
               });
