@@ -10,15 +10,41 @@
     {% block content %}
 
     <div class='button_container'>
-              <a href=# id=test><button class='new-button'>Simulate 1 Step</button></a>
-              <a href=# id=reset><button class='new-button new-button-red'>Reset Simulation</button></a>
-
+      <a href=# id=test><button class='new-button'>Simulate 1 Step</button></a>
+      <a href=# id=reset><button class='new-button new-button-red'>Reset Simulation</button></a>
     </div>
     <div id="frame_container">
         <div id="mynetwork"></div>
         <div id="dataAnalysis">
-            <a href=# id=checkLiveness><button class='new-button new-button-data'>Check Liveness</button></a>
-            <a id="liveResult"></a>
+            <div id="Liveness" class="data_entry">
+                <a> </a>
+                <a id="liveResult" class="result_box"></a>
+                <a href=# id=checkLiveness><button class='new-button-data'>Check Liveness</button></a>
+            </div>
+            <div id="ThroughputRate" class="data_entry">
+                <a href=# id=checkThroughputRate><button class='new-button-data'>Check Throughput Rate</button></a>
+                <a id="throughputRateResult"></a>
+            </div>
+            <div id="ProbNTokens" class="data_entry">
+                <a href=# id=checkProbNTokens><button class='new-button-data'>Check Prob of N Tokens</button></a>
+                <a id="checkProbNTokensResult"></a>
+            </div>
+            <div id="ExpectedNTokens" class="data_entry">
+                <a href=# id=checkExpectedNTokens><button class='new-button-data'>Expected number of Tokens</button></a>
+                <a id="checkExpectedNTokensResult"></a>
+            </div>
+            <div id="TransitionProbEvolution" class="data_entry">
+                <a href=# id=checkTransitionProbEvolution><button class='new-button-data'>Transition prob evolution</button></a>
+                <a id="checkTransitionProbEvolutionResult"></a>
+            </div>
+            <div id="MeanWaitTime" class="data_entry">
+                <a href=# id=checkMeanWaitTime><button class='new-button-data'>Mean Wait Time</button></a>
+                <a id="checkMeanWaitTimeResult"></a>
+            </div>
+            <div id="MaxLikelihoodTransition" class="data_entry">
+                <a href=# id=checkMaxLikelihoodTransition><button class='new-button-data'>Max Likelihood Transition</button></a>
+                <a id="checkMaxLikelihoodTransitionResult"></a>
+            </div>
         </div>
         <div id="clear"></div>
     </div>
