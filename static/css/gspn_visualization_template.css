@@ -1,9 +1,21 @@
 #mynetwork {
-      display: flex;
-      width:100%;
-      height:500px;
-      border: 1px solid lightgray;
-      background: lightgray;
+    border-radius: 8px;
+    width: 60%;
+    float: left;
+    height: 500px;
+    background: lightgray;
+}
+
+#dataAnalysis {
+    border-radius: 8px;
+    width: 36%;
+    float: right;
+    height: 500px;
+    background: lightgray;
+}
+
+#clear {
+    clear: both;
 }
 
 .logo {
