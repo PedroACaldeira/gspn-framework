@@ -10,14 +10,16 @@
     {% block content %}
 
     <div class='button_container'>
-              <a href=# id=test><button class='new-button-green'>Simulate 1 Step</button></a>
-              <a href=# id=reset><button class='new-button-green new-button-red'>Reset Simulation</button></a>
-              <a href=# id=checkLiveness><button class='btn new-button-green'>Check Liveness</button></a>
-              <a id="liveResult"></a>
+              <a href=# id=test><button class='new-button'>Simulate 1 Step</button></a>
+              <a href=# id=reset><button class='new-button new-button-red'>Reset Simulation</button></a>
+
     </div>
     <div id="frame_container">
         <div id="mynetwork"></div>
-        <div id="dataAnalysis"></div>
+        <div id="dataAnalysis">
+            <a href=# id=checkLiveness><button class='new-button new-button-data'>Check Liveness</button></a>
+            <a id="liveResult"></a>
+        </div>
         <div id="clear"></div>
     </div>
     <script type="text/javascript">

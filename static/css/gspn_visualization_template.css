@@ -30,7 +30,7 @@
   display: inline-block;
 }
 
-.new-button-green {
+.new-button {
   display: inline-block;
   margin: 5px; /* space between buttons */
   background-color: #4CAF50; /* Green */
@@ -46,6 +46,10 @@
 
 .new-button-red {
   background-color: #f44336; /* Red */
+}
+
+.new-button-data {
+  background-color: #555555; /* Black */
 }
 
 .button_container {
