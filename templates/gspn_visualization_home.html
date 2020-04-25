@@ -16,19 +16,25 @@
     <div id="frame_container">
         <div id="mynetwork"></div>
         <div id="dataAnalysis">
+
             <div id="Liveness" class="data_entry">
-                <a> </a>
-                <a id="liveResult" class="result_box"></a>
+                <a id="liveResult" class="result_box" >-</a>
                 <a href=# id=checkLiveness><button class='new-button-data'>Check Liveness</button></a>
             </div>
+
             <div id="ThroughputRate" class="data_entry">
-                <a href=# id=checkThroughputRate><button class='new-button-data'>Check Throughput Rate</button></a>
-                <a id="throughputRateResult"></a>
+                <form action="{{ url_for('background_check_throughputrate') }}" method="post">
+                    <input name="throughput_rate_text" class="input_box">
+                    <input id="checkThroughputRate" type="submit" class='new-button-data' value="Check Throughput Rate">
+                    <output name="throughputRateResult" class="result_box" >-</output>
+                </form>
             </div>
+
             <div id="ProbNTokens" class="data_entry">
                 <a href=# id=checkProbNTokens><button class='new-button-data'>Check Prob of N Tokens</button></a>
                 <a id="checkProbNTokensResult"></a>
             </div>
+
             <div id="ExpectedNTokens" class="data_entry">
                 <a href=# id=checkExpectedNTokens><button class='new-button-data'>Expected number of Tokens</button></a>
                 <a id="checkExpectedNTokensResult"></a>
@@ -140,6 +146,14 @@
                 $.getJSON('/background_check_liveness', function(data) {
                   console.log(data);
                   document.getElementById('liveResult').innerHTML = data;
+                });
+                return false;
+              });
+
+              $('a#checkThroughputRate').bind('click', function() {
+                $.getJSON('/background_check_throughputrate', function(data) {
+                  console.log(data);
+                  document.getElementById('throughputRateResult').innerHTML = data;
                 });
                 return false;
               });

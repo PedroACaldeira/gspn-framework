@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import gspn as pn
 
 app = Flask(__name__)  # create an app instance
@@ -9,7 +9,6 @@ def home():
     return render_template("gspn_visualization_home.html", data=my_pn)
 
 
-# background process happening without any refreshing
 @app.route('/background_process_test')
 def background_process_test():
     my_pn.simulate()
@@ -30,15 +29,19 @@ def background_check_liveness():
     return jsonify(liveness_check)
 
 
+@app.route('/background_check_throughputrate', methods=['GET', 'POST'])
+def background_check_throughputrate():
+    my_pn.init_analysis()
+    text = request.form.get('throughput_rate_text', None)
+    processed_text = str(text)
+    throughput = my_pn.transition_throughput_rate(processed_text)
+    liveness_check = my_pn.liveness()
+    return jsonify(liveness_check)
+
+
 @app.route("/about")
 def about():
     return render_template("gspn_visualization_about.html")
-
-
-@app.route("/simulate_token_game")
-def simulate_token_game():
-    print("simulating!")
-    my_pn.simulate(nsteps=10, simulate_wait=True)
 
 
 if __name__ == "__main__":
