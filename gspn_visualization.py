@@ -35,8 +35,39 @@ def background_check_throughputrate():
     text = request.form.get('throughput_rate_text', None)
     processed_text = str(text)
     throughput = my_pn.transition_throughput_rate(processed_text)
-    liveness_check = my_pn.liveness()
-    return jsonify(liveness_check)
+    return jsonify("to-do")
+
+
+@app.route('/background_check_probntokens', methods=['GET', 'POST'])
+def background_check_probntokens():
+    my_pn.init_analysis()
+    text = request.form.get('prob_n_tokens_text', None)
+    processed_text = str(text)
+    return jsonify("to-do")
+
+
+@app.route('/background_check_exepectedntokens', methods=['GET', 'POST'])
+def background_check_expectedntokens():
+    my_pn.init_analysis()
+    text = request.form.get('expected_n_tokens_text', None)
+    processed_text = str(text)
+    return jsonify("to-do")
+
+
+@app.route('/background_check_transitionprobevo', methods=['GET', 'POST'])
+def background_check_transitionprobevo():
+    my_pn.init_analysis()
+    text = request.form.get('transition_prob_evo_text', None)
+    processed_text = str(text)
+    return jsonify("to-do")
+
+
+@app.route('/background_check_meanwaittime', methods=['GET', 'POST'])
+def background_check_meanwaittime():
+    my_pn.init_analysis()
+    text = request.form.get('mean_wait_time_text', None)
+    processed_text = str(text)
+    return jsonify("to-do")
 
 
 @app.route("/about")

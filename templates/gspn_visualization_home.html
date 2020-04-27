@@ -33,25 +33,33 @@
             </div>
 
             <div id="ProbNTokens" class="data_entry">
-                <a href=# id=checkProbNTokens><button class='new-button-data'>Check Prob of N Tokens</button></a>
-                <a id="checkProbNTokensResult"></a>
+                <form action="{{ url_for('background_check_probntokens') }}" method="post", target="probNTokensResult">
+                    <input name="prob_n_tokens_text" class="input_box">
+                    <input id="checkProbNTokens" type="submit" class='new-button-data' value="Prob N Tokens">
+                    <iframe id="probNTokensResult" name="probNTokensResult" class="result_box" >-</iframe>
+                </form>
             </div>
 
             <div id="ExpectedNTokens" class="data_entry">
-                <a href=# id=checkExpectedNTokens><button class='new-button-data'>Expected number of Tokens</button></a>
-                <a id="checkExpectedNTokensResult"></a>
+                <form action="{{ url_for('background_check_expectedntokens') }}" method="post", target="expectedNTokensResult">
+                    <input name="expected_n_tokens_text" class="input_box">
+                    <input id="checkExpectedNTokens" type="submit" class='new-button-data' value="Check Expected N Tokens">
+                    <iframe id="expectedNTokensResult" name="expectedNTokensResult" class="result_box" >-</iframe>
+                </form>
             </div>
             <div id="TransitionProbEvolution" class="data_entry">
-                <a href=# id=checkTransitionProbEvolution><button class='new-button-data'>Transition prob evolution</button></a>
-                <a id="checkTransitionProbEvolutionResult"></a>
+                <form action="{{ url_for('background_check_transitionprobevo') }}" method="post", target="transitionProbEvoResult">
+                    <input name="transition_prob_evo_text" class="input_box">
+                    <input id="checkTransitionProbEvo" type="submit" class='new-button-data' value="Check Transition Probability Evolution">
+                    <iframe id="transitionProbEvoResult" name="transitionProbEvoResult" class="result_box" >-</iframe>
+                </form>
             </div>
             <div id="MeanWaitTime" class="data_entry">
-                <a href=# id=checkMeanWaitTime><button class='new-button-data'>Mean Wait Time</button></a>
-                <a id="checkMeanWaitTimeResult"></a>
-            </div>
-            <div id="MaxLikelihoodTransition" class="data_entry">
-                <a href=# id=checkMaxLikelihoodTransition><button class='new-button-data'>Max Likelihood Transition</button></a>
-                <a id="checkMaxLikelihoodTransitionResult"></a>
+                <form action="{{ url_for('background_check_meanwaittime') }}" method="post", target="meanWaitTimeResult">
+                    <input name="mean_wait_time_text" class="input_box">
+                    <input id="checkMeanWaitTime" type="submit" class='new-button-data' value="Check Mean Wait Time">
+                    <iframe id="meanWaitTimeResult" name="meanWaitTimeResult" class="result_box" >-</iframe>
+                </form>
             </div>
         </div>
         <div id="clear"></div>
@@ -75,7 +83,7 @@
       for(transition in parsed_transitions) {
         console.log(parsed_transitions[transition][0]);
         if(parsed_transitions[transition][0] == 'exp') {
-          nodes.add({id:transition, title:transition, color:'white', shape:'square', physics:'false', label:transition, size:10});
+          nodes.add({id:transition, title:transition, color: {background:'white', border:'black'}, shape:'square', physics:'false', label:transition, size:10});
         }
         else {
           nodes.add({id:transition, title:transition, color:'black', shape:'square', physics:'false', label:transition, size:10});
