@@ -18,15 +18,17 @@
         <div id="dataAnalysis">
 
             <div id="Liveness" class="data_entry">
-                <a id="liveResult" class="result_box" >-</a>
-                <a href=# id=checkLiveness><button class='new-button-data'>Check Liveness</button></a>
+                <form action="{{ url_for('background_check_liveness') }}" method="get" target="liveResult">
+                    <input id="checkLiveness" type="submit" class='new-button-data' value="Check Liveness">
+                    <iframe id="liveResult" name="liveResult" class="result_box" >-</iframe>
+                </form>
             </div>
 
             <div id="ThroughputRate" class="data_entry">
-                <form action="{{ url_for('background_check_throughputrate') }}" method="post">
+                <form action="{{ url_for('background_check_throughputrate') }}" method="post", target="throughputRateResult">
                     <input name="throughput_rate_text" class="input_box">
                     <input id="checkThroughputRate" type="submit" class='new-button-data' value="Check Throughput Rate">
-                    <output name="throughputRateResult" class="result_box" >-</output>
+                    <iframe id="throughputRateResult" name="throughputRateResult" class="result_box" >-</iframe>
                 </form>
             </div>
 
@@ -139,21 +141,6 @@
                     image_link = 'https://raw.githubusercontent.com/PedroACaldeira/gspn-framework/master/images/token_' + marking + '.png';
                     nodes.update({id:place, image:image_link});
                   }
-                });
-                return false;
-              });
-              $('a#checkLiveness').bind('click', function() {
-                $.getJSON('/background_check_liveness', function(data) {
-                  console.log(data);
-                  document.getElementById('liveResult').innerHTML = data;
-                });
-                return false;
-              });
-
-              $('a#checkThroughputRate').bind('click', function() {
-                $.getJSON('/background_check_throughputrate', function(data) {
-                  console.log(data);
-                  document.getElementById('throughputRateResult').innerHTML = data;
                 });
                 return false;
               });
