@@ -51,7 +51,7 @@ class MinimalActionClient():
         if self._server_name == "fibonacci_1":
             self.__result = 't1'
         elif self._server_name == "fibonacci_2":
-            self.__result = 't1'
+            self.__result = None
         elif self._server_name == "fibonacci_3":
             self.__result = None
         elif self._server_name == "fibonacci_4":

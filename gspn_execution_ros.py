@@ -6,16 +6,19 @@ import sys
 import numpy as np
 from . import client
 import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
 
 class GSPNExecutionROS(object):
 
-    def __init__(self, gspn, place_to_client_mapping, output_to_transition_mapping, policy, project_path):
+    def __init__(self, gspn, place_to_client_mapping, output_to_transition_mapping, policy, project_path, initial_place):
         '''
         :param gspn: a previously created gspn
         :param place_to_client_mapping: dictionary where key is the place and the value is the function
         :param output_to_transition_mapping: dictionary where key is the output and the value is the transition
         :param policy: Policy object
         :param project_path: string with project path
+        :param initial_place: string with the name of the robot's initial place
 
         self.__token_positions is a list with the places where each token is ['p1', 'p2', 'p2'] means that token 1 is on p1, token 2
         is on p2 and token 3 is on p2;
@@ -23,6 +26,10 @@ class GSPNExecutionROS(object):
         self.__action_clients is a list with all the action clients;
         self.__client_node is the node where the clients will be connected to.
 
+
+
+        self.__current_place indicates where the robot is
+        self.__action_client is the action client of the robot
         '''
         self.__gspn = gspn
         self.__token_positions = []
@@ -34,8 +41,13 @@ class GSPNExecutionROS(object):
         self.__project_path = project_path
 
         self.__number_of_tokens = 0
+        # should be removed after correcting many to many/many to 1/1 to many
         self.__action_clients = []
+        # --
         self.__client_node = 0
+
+        self.__current_place = initial_place
+        self.__action_client = 0
 
     def get_path(self):
         return self.__project_path
@@ -80,11 +92,10 @@ class GSPNExecutionROS(object):
             translation[place] = 1
         return translation
 
-    def fire_execution(self, transition, token_id):
+    def fire_execution(self, transition):
         '''
         Fires the selected transition.
         :param transition: string with transition that should be fired
-        :param token_id: int with the number of the token that is being fired
         '''
         arcs = self.__gspn.get_connected_arcs(transition, 'transition')
         index = self.__gspn.transitions_to_index[transition]
@@ -93,8 +104,8 @@ class GSPNExecutionROS(object):
         # 1 to 1
         if len(arcs[0]) == 1 and len(arcs[1][index]) == 1:
             new_place = self.__gspn.index_to_places[arcs[1][index][0]]
-            self.__token_positions[token_id] = new_place
             self.__gspn.fire_transition(transition)
+            self.__current_place = new_place
 
         # 1 to many
         elif len(arcs[0]) == 1 and len(arcs[1][index]) > 1:
@@ -102,7 +113,7 @@ class GSPNExecutionROS(object):
             for i in range(len(arcs[1][index])):
                 if i == 0:
                     new_place = self.__gspn.index_to_places[arcs[1][index][i]]
-                    self.__token_positions[token_id] = new_place
+                    # self.__token_positions[token_id] = new_place
                 else:
                     new_place = self.__gspn.index_to_places[arcs[1][index][i]]
                     self.__token_positions.append(new_place)
@@ -137,8 +148,8 @@ class GSPNExecutionROS(object):
 
             if check_flag:
                 new_place = self.__gspn.index_to_places[arcs[1][index][0]]
-                old_place = self.__token_positions[token_id]
-                self.__token_positions[token_id] = new_place
+                # old_place = self.__token_positions[token_id]
+                # self.__token_positions[token_id] = new_place
                 self.__gspn.fire_transition(transition)
                 for place_index in arcs[0]:
                     place_with_token_to_delete = self.__gspn.index_to_places[place_index]
@@ -150,7 +161,8 @@ class GSPNExecutionROS(object):
                                 self.__action_clients[index_to_del].set_state("VOID")
                                 break
             else:
-                self.__action_clients[token_id].set_state("Waiting")
+                print("many to one")
+                # self.__action_clients[token_id].set_state("Waiting")
 
         # many to many
         elif len(arcs[0]) > 1 and len(arcs[1][index]) > 1:
@@ -165,7 +177,7 @@ class GSPNExecutionROS(object):
                 for i in range(len(arcs[1][index])):
                     if i == 0:
                         new_place = self.__gspn.index_to_places[arcs[1][index][i]]
-                        self.__token_positions[token_id] = new_place
+                        # self.__token_positions[token_id] = new_place
                     else:
                         new_place = self.__gspn.index_to_places[arcs[1][index][i]]
                         self.__token_positions.append(new_place)
@@ -183,13 +195,13 @@ class GSPNExecutionROS(object):
                             self.__action_clients[index_to_del].set_state("VOID")
                             break
             else:
-                self.__action_clients[token_id].set_state("Waiting")
+                print("many to many")
+                # self.__action_clients[token_id].set_state("Waiting")
 
-    def apply_policy(self, token_id, result):
+    def apply_policy(self, result):
         '''
         Applies the calculated policy. If we have an immediate transition, the policy is checked. Otherwise, we simply
         fire the transition that resulted from the function that was executed.
-        :param token_id: number of the token that is about to fire
         :param result: result of the current place function
         :return: -2 if the current place has no output transitions. If successful, there is no return value
         '''
@@ -211,13 +223,13 @@ class GSPNExecutionROS(object):
                     probability_list.append(transition_dictionary[transition])
                 transition_to_fire = np.random.choice(transition_list, 1, False, probability_list)[0]
                 print("TRANSITION TO FIRE", transition_to_fire)
-                self.fire_execution(transition_to_fire, token_id)
+                self.fire_execution(transition_to_fire)
             else:
                 return -2
 
         # EXPONENTIAL transitions case
         else:
-            self.fire_execution(result, token_id)
+            self.fire_execution(result)
         print("AFTER", self.__gspn.get_current_marking())
 
     def ros_gspn_execution(self):
@@ -248,20 +260,16 @@ class GSPNExecutionROS(object):
         #Setup action servers
         ## TODO:
 
-        # Setup action clients
+        # Setup action client
         rclpy.init()
         self.__client_node = rclpy.create_node('minimal_action_client')
-        marking = self.__gspn.get_places()
-        for place in marking:
-            splitted_path = self.__place_to_client_mapping[place].split(".")
-            action_type = splitted_path[0]
-            server_name = splitted_path[1]
-            value = marking[place]
-            i = 0
-            while i < value:
-                action_client = client.MinimalActionClient(action_type, node=self.__client_node, server_name=server_name)
-                self.__action_clients.append(action_client)
-                i = i + 1
+        self.__client_node.publisher = self.__client_node.create_publisher(String, '/GSPN_MARKING', 10)
+
+        splitted_path = self.__place_to_client_mapping[self.__current_place].split(".")
+        action_type = splitted_path[0]
+        server_name = splitted_path[1]
+        self.__action_client = client.MinimalActionClient(action_type, node=self.__client_node, server_name=server_name)
+
 
         '''
         Main execution cycle. The execution is done step by step, meaning that there is no real paralelism.
@@ -269,36 +277,39 @@ class GSPNExecutionROS(object):
         '''
 
         while True:
-            number_tokens = len(self.__token_positions)
-            for i in range(number_tokens):
-                if self.__action_clients[i].get_state() == "Free":
-                    current_place = self.__token_positions[i]
-                    splitted_path = self.__place_to_client_mapping[current_place].split(".")
-                    action_type = splitted_path[0]
-                    server_name = splitted_path[1]
-                    self.__action_clients[i] = client.MinimalActionClient(action_type, node=self.__client_node, server_name=server_name)
-                    self.__action_clients[i].send_goal(5)
-                    self.__action_clients[i].set_state("Occupied")
-                    print("sent goal")
+            if self.__action_client.get_state() == "Free":
+                current_place = self.__current_place
+                print("current place is", current_place)
+                splitted_path = self.__place_to_client_mapping[current_place].split(".")
+                # vais ter que meter aqui o ROS_DOMAIN para distinguir entre servers.
+                action_type = splitted_path[0]
+                server_name = splitted_path[1]
+                self.__action_client = client.MinimalActionClient(action_type, node=self.__client_node, server_name=server_name)
+                self.__action_client.send_goal(5)
+                self.__action_client.set_state("Occupied")
+                print("sent goal")
 
-                if self.__action_clients[i].get_state() == "Occupied":
-                    rclpy.spin_once(self.__client_node)
+            if self.__action_client.get_state() == "Occupied":
+                rclpy.spin_once(self.__client_node)
 
-                if self.__action_clients[i].get_state() == "Done":
-                    result = self.__action_clients[i].get_result()
-                    res_policy = self.apply_policy(i, result)
+            if self.__action_client.get_state() == "Done":
+                result = self.__action_client.get_result()
+                res_policy = self.apply_policy(result)
+                # broadcast new marking
 
-                    if self.__action_clients[i].get_state() == "Waiting":
-                        print("I am waiting", i)
+                if self.__action_client.get_state() == "Waiting":
+                    print("I am waiting")
 
-                    elif res_policy == -2:
-                        print("The node doesn't have any output arcs.", i)
-                        self.__action_clients[i].set_state("Inactive")
-                        self.__action_clients[i].set_result(None)
-                    else:
-                        self.__action_clients[i].set_state("Free")
-                        self.__action_clients[i].set_result(None)
-                    print("------------")
+                elif res_policy == -2:
+                    print("The node doesn't have any output arcs.")
+                    self.__action_client.set_state("Inactive")
+                    self.__action_client.set_result(None)
+                else:
+                    self.__action_client.set_state("Free")
+                    self.__action_client.set_result(None)
+                print("------------")
+
+            # check if marking has changed and if so, update it.
 
 def main():
 
@@ -408,6 +419,23 @@ def main():
         my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path)
         my_execution.ros_gspn_execution()
 
+
+    elif test_case == "a":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2'], [1, 0])
+        trans = my_pn.add_transitions(['t1'], ['exp'], [1])
+        arc_in = {'p1': ['t1']}
+        arc_out = {'t1': ['p2']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+        # Since I'm not using imm transitions, this part is irrelevant
+        places_tup = ('p1', 'p2')
+        policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        project_path = "/home/pedroac/ros2_ws/src"
+        p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2'}
+
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p1')
+        my_execution.ros_gspn_execution()
 
     else:
         print("Sorry, that test is not available yet. Try again in a few months!")
