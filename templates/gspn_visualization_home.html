@@ -17,6 +17,15 @@
         <div id="mynetwork"></div>
         <div id="dataAnalysis">
 
+            <table style="width:100%">
+                <tr>
+                    <th class="analysis-title" style="text-align:left;">Input</th>
+                    <th class="analysis-title">Analysis Tools</th>
+                    <th class="analysis-title" style="text-align:right;">Output</th>
+                </tr>
+
+            </table>
+
             <div id="Liveness" class="data_entry">
                 <form action="{{ url_for('background_check_liveness') }}" method="get" target="liveResult">
                     <input id="checkLiveness" type="submit" class='new-button-data' value="Check Liveness">

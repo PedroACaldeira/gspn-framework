@@ -12,7 +12,6 @@ def home():
 @app.route('/background_process_test')
 def background_process_test():
     my_pn.simulate()
-    print("Current Marking", my_pn.get_current_marking())
     return jsonify(my_pn.get_current_marking())
 
 
