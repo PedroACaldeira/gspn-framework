@@ -141,6 +141,7 @@
             $(function() {
               $('a#test').bind('click', function() {
                 $.getJSON('/background_process_test', function(data) {
+                  console.log("AQUI ZEZOCA");
                   console.log(data);
                   for(place in data) {
                     var marking = data[place];

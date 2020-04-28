@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>About Flask</title>
+  </head>
+  <body>
+    {% extends "gspn_visualization_template.html" %}
+    {% block content %}
+    <div class='button_container'>
+      <a href="{{ url_for('use_code') }}" id=use_code><button class='new-button'>Use GSPN on Code</button></a>
+      <a href="{{ url_for('use_xml') }}" id=open_xml><button class='new-button'>Open xml GSPN</button></a>
+    </div>
+
+    {% endblock %}
+  </body>
+</html>

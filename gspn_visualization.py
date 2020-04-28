@@ -1,11 +1,83 @@
 from flask import Flask, render_template, jsonify, request
 import gspn as pn
+import gspn_tools
 
 app = Flask(__name__)  # create an app instance
-
+my_pn = pn.GSPN()
 
 @app.route("/")
 def home():
+    return render_template("gspn_visualization_open_gspn.html")
+
+
+@app.route("/use_code")
+def use_code():
+    # Write your code here
+    my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12'],
+                              [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1])
+    my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10'],
+                                  ['exp', 'exp', 'exp', 'exp', 'exp', 'imm', 'imm', 'exp', 'exp', 'exp'],
+                                  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+
+    arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p3': ['t3'], 'p5': ['t4'], 'p6': ['t4'], 'p7': ['t5'],
+              'p8': ['t6', 't7'], 'p9': ['t8', 't9'], 'p10': ['t10'], 'p11': ['t4'], 'p12': ['t5']}
+
+    arc_out = {'t1': ['p2'], 't2': ['p3'], 't3': ['p4', 'p5', 'p6'], 't4': ['p7'], 't5': ['p8', 'p9'], 't6': ['p1'],
+               't7': ['p9'], 't8': ['p2'], 't9': ['p10'], 't10': ['p1']}
+
+    my_pn.add_arcs(arc_in, arc_out)
+    return render_template("gspn_visualization_home.html", data=my_pn)
+
+
+@app.route("/use_xml")
+def use_xml():
+    tool = gspn_tools.GSPNtools()
+    gspn = tool.import_xml("multi_escort_run.xml")[0]
+
+    # Begin First Part: add_places
+    marking = gspn.get_current_marking()
+    places = []
+    tokens = []
+    for place in marking:
+        places.append(place)
+        tokens.append(marking[place])
+    my_pn.add_places(places, tokens)
+
+    # Begin Second Part: add_transitions
+    transitions = gspn.get_transitions()
+    transition_names = []
+    transition_types = []
+    transition_rates = []
+    for transition in transitions:
+        transition_names.append(transition)
+        transition_types.append(transitions[transition][0])
+        # HEADS UP! THE RATE IS ALWAYS 1
+        transition_rates.append(1)
+    my_pn.add_transitions(transition_names, transition_types, transition_rates)
+
+    # Begin Third Part: arc_in
+    arc_in = {}
+    arc_in_aux = gspn.get_arcs_dict()[0]
+    for place in arc_in_aux:
+        place_name = gspn.index_to_places[place]
+        for transition in arc_in_aux[place]:
+            if place_name in arc_in:
+                arc_in[place_name].append(gspn.index_to_transitions[transition])
+            else:
+                arc_in[place_name] = [gspn.index_to_transitions[transition]]
+
+    # Begin Fourth Part: arc_out
+    arc_out = {}
+    arc_out_aux = gspn.get_arcs_dict()[1]
+    for transition in arc_out_aux:
+        transition_name = gspn.index_to_transitions[transition]
+        for place in arc_out_aux[transition]:
+            if transition_name in arc_out:
+                arc_out[transition_name].append(gspn.index_to_places[place])
+            else:
+                arc_out[transition_name] = [gspn.index_to_places[place]]
+    my_pn.add_arcs(arc_in, arc_out)
+
     return render_template("gspn_visualization_home.html", data=my_pn)
 
 
@@ -75,21 +147,4 @@ def about():
 
 
 if __name__ == "__main__":
-    # Insert your GSPN inside this block
-    my_pn = pn.GSPN()
-    places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12'],
-                              [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1])
-    trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10'],
-                                  ['exp', 'exp', 'exp', 'exp', 'exp', 'imm', 'imm', 'exp', 'exp', 'exp'],
-                                  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
-
-    arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p3': ['t3'], 'p5': ['t4'], 'p6': ['t4'], 'p7': ['t5'],
-              'p8': ['t6', 't7'], 'p9': ['t8', 't9'], 'p10': ['t10'], 'p11': ['t4'], 'p12': ['t5']}
-
-    arc_out = {'t1': ['p2'], 't2': ['p3'], 't3': ['p4', 'p5', 'p6'], 't4': ['p7'], 't5': ['p8', 'p9'], 't6': ['p1'],
-               't7': ['p9'], 't8': ['p2'], 't9': ['p10'], 't10': ['p1']}
-
-    a, b = my_pn.add_arcs(arc_in, arc_out)
-    # End Insertion Block
-
     app.run(debug=True)
