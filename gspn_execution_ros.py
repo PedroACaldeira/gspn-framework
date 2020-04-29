@@ -9,9 +9,11 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
+from . import gspn_executor
+
 class GSPNExecutionROS(object):
 
-    def __init__(self, gspn, place_to_client_mapping, output_to_transition_mapping, policy, project_path, initial_place):
+    def __init__(self, gspn, place_to_client_mapping, output_to_transition_mapping, policy, project_path, initial_place, robot_id):
         '''
         :param gspn: a previously created gspn
         :param place_to_client_mapping: dictionary where key is the place and the value is the function
@@ -45,9 +47,11 @@ class GSPNExecutionROS(object):
         self.__action_clients = []
         # --
         self.__client_node = 0
+        self.__client_node_subscriber = 0
 
         self.__current_place = initial_place
         self.__action_client = 0
+        self.__robot_id = robot_id
 
     def get_path(self):
         return self.__project_path
@@ -260,10 +264,11 @@ class GSPNExecutionROS(object):
         #Setup action servers
         ## TODO:
 
-        # Setup action client
+        # Setup action client, publisher and subscriber
         rclpy.init()
-        self.__client_node = rclpy.create_node('minimal_action_client')
-        self.__client_node.publisher = self.__client_node.create_publisher(String, '/GSPN_MARKING', 10)
+        self.__client_node = gspn_executor.gspn_executor()
+        #self.__client_node.subscription = self.__client_node.create_subscription(String, '/GSPN_MARKING', self.__client_node.listener_callback, 10)
+        #self.__client_node.subscription
 
         splitted_path = self.__place_to_client_mapping[self.__current_place].split(".")
         action_type = splitted_path[0]
@@ -295,7 +300,21 @@ class GSPNExecutionROS(object):
             if self.__action_client.get_state() == "Done":
                 result = self.__action_client.get_result()
                 res_policy = self.apply_policy(result)
-                # broadcast new marking
+                self.__client_node.talker_callback(result, self.__robot_id)
+
+                rclpy.spin_once(self.__client_node)
+                rclpy.spin_once(self.__client_node)
+
+                # Update current marking phase
+                received_data = self.__client_node.get_transitions_fired()
+                print("received data", received_data)
+                for i in range(len(received_data)):
+                    if received_data[i][0] == None or received_data[i][1] == self.__robot_id:
+                        continue
+                    else:
+                        self.fire_execution(received_data[i][0])
+                        print("FIRED! ", self.__gspn.get_current_marking())
+                self.__client_node.reset_transitions_fired()
 
                 if self.__action_client.get_state() == "Waiting":
                     print("I am waiting")
@@ -308,6 +327,7 @@ class GSPNExecutionROS(object):
                     self.__action_client.set_state("Free")
                     self.__action_client.set_result(None)
                 print("------------")
+
 
             # check if marking has changed and if so, update it.
 
@@ -422,7 +442,7 @@ def main():
 
     elif test_case == "a":
         my_pn = pn.GSPN()
-        places = my_pn.add_places(['p1', 'p2'], [1, 0])
+        places = my_pn.add_places(['p1', 'p2'], [1, 1])
         trans = my_pn.add_transitions(['t1'], ['exp'], [1])
         arc_in = {'p1': ['t1']}
         arc_out = {'t1': ['p2']}
@@ -434,7 +454,24 @@ def main():
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2'}
 
-        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p1')
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p1', 1)
+        my_execution.ros_gspn_execution()
+
+    elif test_case == "b":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2'], [1, 1])
+        trans = my_pn.add_transitions(['t1'], ['exp'], [1])
+        arc_in = {'p1': ['t1']}
+        arc_out = {'t1': ['p2']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+        # Since I'm not using imm transitions, this part is irrelevant
+        places_tup = ('p1', 'p2')
+        policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
+        policy = policy.Policy(places_tup, policy_dict)
+        project_path = "/home/pedroac/ros2_ws/src"
+        p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2'}
+
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p2', 2)
         my_execution.ros_gspn_execution()
 
     else:

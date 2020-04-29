@@ -31,6 +31,9 @@ class MinimalActionClient():
     def set_state(self, new_state):
         self.__state = new_state
 
+    def listener_callback(self, msg):
+        self.get_logger().info('I heard: "%s"' % msg.data)
+
     def goal_response_callback(self, future):
         goal_handle = future.result()
         if not goal_handle.accepted:
