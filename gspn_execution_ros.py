@@ -202,6 +202,27 @@ class GSPNExecutionROS(object):
                 print("many to many")
                 # self.__action_clients[token_id].set_state("Waiting")
 
+
+    def get_immediate_transition_result(self):
+        execution_policy = self.get_policy()
+        current_marking = self.__gspn.get_current_marking()
+        order = execution_policy.get_places_tuple()
+        marking_tuple = self.convert_to_tuple(current_marking, order)
+        pol_dict = execution_policy.get_policy_dictionary()
+        transition_dictionary = self.get_transitions(marking_tuple, pol_dict)
+        if transition_dictionary:
+            transition_list = []
+            probability_list = []
+            for transition in transition_dictionary:
+                transition_list.append(transition)
+                probability_list.append(transition_dictionary[transition])
+            transition_to_fire = np.random.choice(transition_list, 1, False, probability_list)[0]
+            print("TRANSITION TO FIRE", transition_to_fire)
+            return transition_to_fire
+        else:
+            return -2
+
+
     def apply_policy(self, result):
         '''
         Applies the calculated policy. If we have an immediate transition, the policy is checked. Otherwise, we simply
@@ -213,23 +234,12 @@ class GSPNExecutionROS(object):
         print("BEFORE", self.__gspn.get_current_marking())
         # IMMEDIATE transitions case
         if result is None:
-            execution_policy = self.get_policy()
-            current_marking = self.__gspn.get_current_marking()
-            order = execution_policy.get_places_tuple()
-            marking_tuple = self.convert_to_tuple(current_marking, order)
-            pol_dict = execution_policy.get_policy_dictionary()
-            transition_dictionary = self.get_transitions(marking_tuple, pol_dict)
-            if transition_dictionary:
-                transition_list = []
-                probability_list = []
-                for transition in transition_dictionary:
-                    transition_list.append(transition)
-                    probability_list.append(transition_dictionary[transition])
-                transition_to_fire = np.random.choice(transition_list, 1, False, probability_list)[0]
-                print("TRANSITION TO FIRE", transition_to_fire)
-                self.fire_execution(transition_to_fire)
-            else:
-                return -2
+                imm_transition = self.get_immediate_transition_result()
+                if imm_transition != -2:
+                    self.fire_execution(imm_transition)
+                    return imm_transition
+                else:
+                    return -2
 
         # EXPONENTIAL transitions case
         else:
@@ -267,9 +277,6 @@ class GSPNExecutionROS(object):
         # Setup action client, publisher and subscriber
         rclpy.init()
         self.__client_node = gspn_executor.gspn_executor()
-        #self.__client_node.subscription = self.__client_node.create_subscription(String, '/GSPN_MARKING', self.__client_node.listener_callback, 10)
-        #self.__client_node.subscription
-
         splitted_path = self.__place_to_client_mapping[self.__current_place].split(".")
         action_type = splitted_path[0]
         server_name = splitted_path[1]
@@ -299,8 +306,13 @@ class GSPNExecutionROS(object):
 
             if self.__action_client.get_state() == "Done":
                 result = self.__action_client.get_result()
+
                 res_policy = self.apply_policy(result)
-                self.__client_node.talker_callback(result, self.__robot_id)
+
+                if res_policy != None and res_policy != -2:
+                    self.__client_node.talker_callback(res_policy, self.__robot_id)
+                else:
+                    self.__client_node.talker_callback(result, self.__robot_id)
 
                 rclpy.spin_once(self.__client_node)
                 rclpy.spin_once(self.__client_node)
@@ -354,7 +366,7 @@ def main():
         # Since I'm not using imm transitions, this part is irrelevant
         places_tup = ('p1', 'p2')
         policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
-        policy = policy.Policy(places_tup, policy_dict)
+        policy = policy.Policy(policy_dict, places_tup)
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2'}
 
@@ -371,7 +383,7 @@ def main():
         # Since I'm not using imm transitions, this part is irrelevant
         places_tup = ('p1', 'p2')
         policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
-        policy = policy.Policy(places_tup, policy_dict)
+        policy = policy.Policy(policy_dict, places_tup)
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2', 'p3':'Fibonacci.fibonacci_3'}
 
@@ -388,7 +400,7 @@ def main():
         # Since I'm not using imm transitions, this part is irrelevant
         places_tup = ('p1', 'p2')
         policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
-        policy = policy.Policy(places_tup, policy_dict)
+        policy = policy.Policy(policy_dict, places_tup)
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2', 'p3':'Fibonacci.fibonacci_3'}
 
@@ -405,7 +417,7 @@ def main():
         # Since I'm not using imm transitions, this part is irrelevant
         places_tup = ('p1', 'p2')
         policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
-        policy = policy.Policy(places_tup, policy_dict)
+        policy = policy.Policy(policy_dict, places_tup)
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2', 'p3':'Fibonacci.fibonacci_3', 'p4':'Fibonacci.fibonacci_4'}
 
@@ -427,7 +439,7 @@ def main():
         # Since I'm not using imm transitions, this part is irrelevant
         places_tup = ('p1', 'p2')
         policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
-        policy = policy.Policy(places_tup, policy_dict)
+        policy = policy.Policy(policy_dict, places_tup)
         # project_path = "C:/Users/calde/Desktop/ROBOT"
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2',
@@ -450,7 +462,7 @@ def main():
         # Since I'm not using imm transitions, this part is irrelevant
         places_tup = ('p1', 'p2')
         policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
-        policy = policy.Policy(places_tup, policy_dict)
+        policy = policy.Policy(policy_dict, places_tup)
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2'}
 
@@ -467,11 +479,29 @@ def main():
         # Since I'm not using imm transitions, this part is irrelevant
         places_tup = ('p1', 'p2')
         policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
-        policy = policy.Policy(places_tup, policy_dict)
+        policy = policy.Policy(policy_dict, places_tup)
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2'}
 
         my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p2', 2)
+        my_execution.ros_gspn_execution()
+
+
+    elif test_case == "c":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2', 'p3'], [1, 1, 0])
+        trans = my_pn.add_transitions(['t1', 't2'], ['imm', 'imm'], [1, 1])
+        arc_in = {'p1': ['t1', 't2']}
+        arc_out = {'t1': ['p2'], 't2':['p3']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+
+        places_tup = ('p1', 'p2', 'p3')
+        policy_dict = {(1, 1, 0): {'t2': 0, 't1': 1}}
+        policy = policy.Policy(policy_dict, places_tup)
+        project_path = "/home/pedroac/ros2_ws/src"
+        p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2', 'p3': 'Fibonacci.fibonacci_3'}
+
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p1', 3)
         my_execution.ros_gspn_execution()
 
     else:
