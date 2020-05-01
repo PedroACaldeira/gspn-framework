@@ -144,9 +144,9 @@
             }
             async function change_color(transition, places) {
                 console.log(transition);
-                nodes.update({id:transition, color:{border:'yellow'}});
+                nodes.update({id:transition, color:{border:'yellow'}, shadow:{enabled:true, color:'yellow', x:0, y:0, size:20}});
                 await sleep(1000);
-                nodes.update({id:transition, color:{border:'black'}});
+                nodes.update({id:transition, color:{border:'black'}, shadow:{enabled:false}});
                 for(place in places) {
                   var marking = places[place];
                   image_link = 'https://raw.githubusercontent.com/PedroACaldeira/gspn-framework/master/images/token_' + marking + '.png';
