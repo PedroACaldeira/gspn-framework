@@ -109,8 +109,6 @@ def use_xml():
 @app.route('/background_process_test')
 def background_process_test():
     marking_and_transition_list = my_pn.simulate()
-    print("lista", marking_and_transition_list)
-    print("marking", my_pn.get_current_marking())
     return jsonify(my_pn.get_current_marking(), marking_and_transition_list[1])
 
 

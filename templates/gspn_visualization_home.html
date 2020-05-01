@@ -139,27 +139,24 @@
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
     <script type=text/javascript>
 
-            function sleep(milliseconds) {
-                    let timeStart = new Date().getTime();
-                    while (true) {
-                        let elapsedTime = new Date().getTime() - timeStart;
-                        if (elapsedTime > milliseconds) {
-                            break;
-                        }
-                    }
+            function sleep(ms) {
+              return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            async function change_color(transition, places) {
+                console.log(transition);
+                nodes.update({id:transition, color:{border:'yellow'}});
+                await sleep(1000);
+                nodes.update({id:transition, color:{border:'black'}});
+                for(place in places) {
+                  var marking = places[place];
+                  image_link = 'https://raw.githubusercontent.com/PedroACaldeira/gspn-framework/master/images/token_' + marking + '.png';
+                  nodes.update({id:place, image:image_link});
+                }
             }
             $(function() {
               $('a#test').bind('click', function() {
                 $.getJSON('/background_process_test', function(data) {
-                  console.log(data[0]);
-                  console.log(data[1]);
-                  places = data[0]
-                  // sleep(1000);
-                  for(place in places) {
-                    var marking = places[place];
-                    image_link = 'https://raw.githubusercontent.com/PedroACaldeira/gspn-framework/master/images/token_' + marking + '.png';
-                    nodes.update({id:place, image:image_link});
-                  }
+                  change_color(data[1], data[0]);
                 });
                 return false;
               });
