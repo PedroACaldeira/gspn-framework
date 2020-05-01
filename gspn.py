@@ -564,6 +564,7 @@ class GSPN(object):
 
     def simulate(self, nsteps=1, reporting_step=1, simulate_wait=False):
         markings = []
+        fired_transition = 0
         for step in range(nsteps):
             if step % reporting_step == 0:
                 markings.append(self.get_current_marking())
@@ -583,10 +584,12 @@ class GSPN(object):
                     # Draw from all enabled immediate transitions
                     firing_transition = np.random.choice(a=random_switch_id, size=None, p=random_switch_prob)
                     # Fire transition
+                    fired_transition = firing_transition
                     self.fire_transition(firing_transition)
                 else:
                     # Fire the only available immediate transition
-                    self.fire_transition(list(random_switch.keys())[0])
+                    fired_transition = list(random_switch.keys())[0]
+                    self.fire_transition(fired_transition)
             elif enabled_exp_transitions:
                 if len(enabled_exp_transitions) > 1:
                     if simulate_wait:
@@ -613,6 +616,7 @@ class GSPN(object):
                         firing_transition = np.random.choice(a=exp_trans_id, size=None, p=exp_trans_prob)
 
                     # Fire transition
+                    fired_transition = firing_transition
                     self.fire_transition(firing_transition)
                 else:
                     if simulate_wait:
@@ -620,9 +624,12 @@ class GSPN(object):
                         time.sleep(wait)
 
                     # Fire transition
-                    self.fire_transition(list(enabled_exp_transitions.keys())[0])
+                    fired_transition = list(enabled_exp_transitions.keys())[0]
+                    self.fire_transition(fired_transition)
 
-        return list(markings)
+        full_list = list(markings)
+        full_list.append(fired_transition)
+        return full_list
 
     def get_state_from_marking(self, marking, states_to_marking):
         for st, mk in states_to_marking.items():
