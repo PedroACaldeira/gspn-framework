@@ -276,7 +276,7 @@ class GSPNExecutionROS(object):
 
         # Setup action client, publisher and subscriber
         rclpy.init()
-        self.__client_node = gspn_executor.gspn_executor()
+        self.__client_node = gspn_executor.gspn_executor(self.__robot_id)
         splitted_path = self.__place_to_client_mapping[self.__current_place].split(".")
         action_type = splitted_path[0]
         server_name = splitted_path[1]

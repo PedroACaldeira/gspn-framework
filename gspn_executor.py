@@ -6,8 +6,9 @@ from ast import literal_eval
 
 class gspn_executor(Node):
 
-    def __init__(self):
-        super().__init__('gspn_executor')
+    def __init__(self, robot_id):
+        node_name="gspn_executor_" + str(robot_id)
+        super().__init__(node_name, namespace="robot_" + str(robot_id))
         self.publisher = self.create_publisher(String, '/TRANSITIONS_FIRED', 10)
         self.subscription = self.create_subscription(String, '/TRANSITIONS_FIRED', self.listener_callback, 10)
         self.subscription  # prevent unused variable warning

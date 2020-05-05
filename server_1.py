@@ -79,7 +79,6 @@ class MinimalActionServer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-
     minimal_action_server = MinimalActionServer()
 
     # Use a MultiThreadedExecutor to enable processing goals concurrently
