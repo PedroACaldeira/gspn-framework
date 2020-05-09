@@ -8,8 +8,11 @@ from . import client
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
+from datetime import datetime
 
 from . import gspn_executor
+
+from message_interfaces.msg import GSPNFiringData
 
 class GSPNExecutionROS(object):
 
@@ -52,6 +55,7 @@ class GSPNExecutionROS(object):
         self.__current_place = initial_place
         self.__action_client = 0
         self.__robot_id = robot_id
+        self.__transitions_fired = []
 
     def get_path(self):
         return self.__project_path
@@ -95,6 +99,51 @@ class GSPNExecutionROS(object):
             place = self.__gspn.index_to_places[i]
             translation[place] = 1
         return translation
+
+
+    '''
+    Callback functions section:
+    In this section, we included every callback function that is being used both by our Action Clients and
+    our publishers/subscribers:
+    - topic_listener_callback;
+    - topic_talker_callback;
+
+    '''
+
+    def topic_listener_callback(self, msg):
+        self.__client_node.get_logger().info('I heard Robot %s firing %s' % (msg.robot_id, msg.transition))
+        self.__transitions_fired.append([msg.transition, msg.robot_id])
+        # self.__transitions_fired.append(parsed_msg)
+
+    def topic_talker_callback(self, fired_transition):
+        # the topic message is composed by four elements:
+        # - fired transition;
+        # - current marking;
+        # - robot_id;
+        # - timestamp.
+        msg = GSPNFiringData()
+        current_time = datetime.now()
+        timestamp = current_time.time()
+        msg.transition = str(fired_transition)
+        msg.marking = str(self.__gspn.get_current_marking())
+        msg.robot_id = self.__robot_id
+        msg.timestamp = str(timestamp)
+
+        self.__client_node.publisher.publish(msg)
+        self.__client_node.get_logger().info('Robot %s firing %s'% (msg.robot_id, msg.transition))
+        self.__client_node.i += 1
+
+
+    '''
+    GSPN Execution core functions section:
+    In this section, we included the four main functions that are responsible for the execution of our
+    GSPNs:
+    - fire execution;
+    - get_immediate_transition_result;
+    - apply_policy;
+    - ros_gspn_execution.
+    '''
+
 
     def fire_execution(self, transition):
         '''
@@ -274,12 +323,20 @@ class GSPNExecutionROS(object):
         #Setup action servers
         ## TODO:
 
-        # Setup action client, publisher and subscriber
         rclpy.init()
-        self.__client_node = gspn_executor.gspn_executor(self.__robot_id)
+        # Setup client node with publisher and subscriber
+        node_name = "executor_" + str(self.__robot_id)
+        self.__client_node = Node(node_name, namespace="robot_" + str(self.__robot_id))
+        self.__client_node.publisher = self.__client_node.create_publisher(GSPNFiringData, '/TRANSITIONS_FIRED', 10)
+        self.__client_node.subscription = self.__client_node.create_subscription(GSPNFiringData, '/TRANSITIONS_FIRED', self.topic_listener_callback, 10)
+        self.__client_node.subscription  # prevent unused variable warning
+        self.__client_node.i = 0
+
         splitted_path = self.__place_to_client_mapping[self.__current_place].split(".")
         action_type = splitted_path[0]
         server_name = splitted_path[1]
+
+        # Setup client node with action client
         self.__action_client = client.MinimalActionClient(action_type, node=self.__client_node, server_name=server_name)
 
 
@@ -310,15 +367,15 @@ class GSPNExecutionROS(object):
                 res_policy = self.apply_policy(result)
 
                 if res_policy != None and res_policy != -2:
-                    self.__client_node.talker_callback(res_policy, self.__robot_id)
+                    self.topic_talker_callback(res_policy)
                 else:
-                    self.__client_node.talker_callback(result, self.__robot_id)
+                    self.topic_talker_callback(result)
 
                 rclpy.spin_once(self.__client_node)
                 rclpy.spin_once(self.__client_node)
 
                 # Update current marking phase
-                received_data = self.__client_node.get_transitions_fired()
+                received_data = self.__transitions_fired
                 print("received data", received_data)
                 for i in range(len(received_data)):
                     if received_data[i][0] == None or received_data[i][1] == self.__robot_id:
@@ -326,7 +383,7 @@ class GSPNExecutionROS(object):
                     else:
                         self.fire_execution(received_data[i][0])
                         print("FIRED! ", self.__gspn.get_current_marking())
-                self.__client_node.reset_transitions_fired()
+                self.__transitions_fired = []
 
                 if self.__action_client.get_state() == "Waiting":
                     print("I am waiting")
