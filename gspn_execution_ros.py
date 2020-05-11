@@ -1,18 +1,26 @@
+# Standard libs
 from concurrent.futures.thread import ThreadPoolExecutor
-from . import policy
-from . import gspn as pn
 import os
 import sys
 import numpy as np
-from . import client
+from datetime import datetime
+import time
+import random
+# ROS libs
 import rclpy
+from rclpy.action import ActionClient
 from rclpy.node import Node
 from std_msgs.msg import String
-from datetime import datetime
-
+from message_interfaces.msg import GSPNFiringData
+from action_package.action import Simple
+from action_msgs.msg import GoalStatus
+from example_interfaces.action import Fibonacci
+# Files from my package
+from . import policy
+from . import gspn as pn
+from . import client
 from . import gspn_executor
 
-from message_interfaces.msg import GSPNFiringData
 
 class GSPNExecutionROS(object):
 
@@ -107,13 +115,15 @@ class GSPNExecutionROS(object):
     our publishers/subscribers:
     - topic_listener_callback;
     - topic_talker_callback;
+    - action_send_goal;
+    -
 
     '''
 
     def topic_listener_callback(self, msg):
         self.__client_node.get_logger().info('I heard Robot %s firing %s' % (msg.robot_id, msg.transition))
         self.__transitions_fired.append([msg.transition, msg.robot_id])
-        # self.__transitions_fired.append(parsed_msg)
+
 
     def topic_talker_callback(self, fired_transition):
         # the topic message is composed by four elements:
@@ -132,6 +142,68 @@ class GSPNExecutionROS(object):
         self.__client_node.publisher.publish(msg)
         self.__client_node.get_logger().info('Robot %s firing %s'% (msg.robot_id, msg.transition))
         self.__client_node.i += 1
+
+
+    def action_get_result_callback(self, future):
+
+        result = future.result().result
+        status = future.result().status
+
+        if status == GoalStatus.STATUS_SUCCEEDED:
+            print(self.__action_client._action_name + ': Goal succeeded! Result: {0}'.format(result.transition))
+
+            # Now I listen to the topic and publish to it.
+
+
+            # Now I give out the next goal.
+            res_policy = self.apply_policy(result.transition)
+
+            if res_policy == -2:
+                print("The place has no output arcs.")
+                self.__client_node.destroy_client(self.__action_client)
+                self.__client_node.destroy_node()
+            else:
+                action_type = self.__place_to_client_mapping[self.__current_place][0]
+                server_name = self.__place_to_client_mapping[self.__current_place][1]
+                self.__client_node.destroy_client(self.__action_client)
+                self.__action_client = rclpy.action.ActionClient(self.__client_node, action_type, server_name)
+
+                current_place = self.__current_place
+                print("current place is", current_place)
+                self.action_send_goal(current_place, action_type, server_name)
+
+        else:
+            print(self.__action_client._action_name + ': Goal failed with status: {0}'.format(status))
+
+
+    def action_goal_response_callback(self, future):
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            print('Goal rejected :( '+ self.__action_client._action_name)
+            return
+
+        print('Goal accepted :) '+ self.__action_client._action_name)
+
+        self.__action_client._get_result_future = goal_handle.get_result_async()
+        self.__action_client._get_result_future.add_done_callback(self.action_get_result_callback)
+
+
+    def action_feedback_callback(self, feedback):
+        print('Received feedback: {0}'.format(feedback.feedback.time_passed))
+
+
+    def action_send_goal(self, current_place, action_type, server_name):
+        print('Waiting for action server '+ server_name)
+        self.__action_client.wait_for_server()
+        goal_msg = action_type.Goal()
+        goal_msg.place = current_place
+        print('Sending goal request to '+ server_name)
+
+        self.__action_client._send_goal_future = self.__action_client.send_goal_async(
+            goal_msg,
+            feedback_callback=self.action_feedback_callback)
+
+        self.__action_client._send_goal_future.add_done_callback(self.action_goal_response_callback)
 
 
     '''
@@ -282,13 +354,13 @@ class GSPNExecutionROS(object):
 
         print("BEFORE", self.__gspn.get_current_marking())
         # IMMEDIATE transitions case
-        if result is None:
-                imm_transition = self.get_immediate_transition_result()
-                if imm_transition != -2:
-                    self.fire_execution(imm_transition)
-                    return imm_transition
-                else:
-                    return -2
+        if result == 'None':
+            imm_transition = self.get_immediate_transition_result()
+            if imm_transition != -2:
+                self.fire_execution(imm_transition)
+                return imm_transition
+            else:
+                return -2
 
         # EXPONENTIAL transitions case
         else:
@@ -332,29 +404,32 @@ class GSPNExecutionROS(object):
         self.__client_node.subscription  # prevent unused variable warning
         self.__client_node.i = 0
 
-        splitted_path = self.__place_to_client_mapping[self.__current_place].split(".")
-        action_type = splitted_path[0]
-        server_name = splitted_path[1]
+        action_type = self.__place_to_client_mapping[self.__current_place][0]
+        server_name = self.__place_to_client_mapping[self.__current_place][1]
 
         # Setup client node with action client
-        self.__action_client = client.MinimalActionClient(action_type, node=self.__client_node, server_name=server_name)
+        # em vez de self__action_client pode ser self.__client_node._action_client.
+        # pensa nisso.
+        self.__action_client = rclpy.action.ActionClient(self.__client_node, action_type, server_name)
+        print("server name ", self.__action_client._action_name)
+
+        current_place = self.__current_place
+        print("current place is", current_place)
+        self.action_send_goal(current_place, action_type, server_name)
+        print("Sent goal.")
+
+        rclpy.spin(self.__client_node)
 
 
-        '''
-        Main execution cycle. The execution is done step by step, meaning that there is no real paralelism.
-        At each moment, we check whether the action client goal is complete and if not, we run spin_once()
-        '''
-
+'''
         while True:
             if self.__action_client.get_state() == "Free":
                 current_place = self.__current_place
                 print("current place is", current_place)
-                splitted_path = self.__place_to_client_mapping[current_place].split(".")
-                # vais ter que meter aqui o ROS_DOMAIN para distinguir entre servers.
-                action_type = splitted_path[0]
-                server_name = splitted_path[1]
-                self.__action_client = client.MinimalActionClient(action_type, node=self.__client_node, server_name=server_name)
-                self.__action_client.send_goal(5)
+                action_type = self.__place_to_client_mapping[self.__current_place][0]
+                server_name = self.__place_to_client_mapping[self.__current_place][1]
+                self.__client_node._action_client = rclpy.action.ActionClient(self.__client_node, action_type, server_name)
+                self.send_goal(5, action_type, server_name)
                 self.__action_client.set_state("Occupied")
                 print("sent goal")
 
@@ -397,7 +472,7 @@ class GSPNExecutionROS(object):
                     self.__action_client.set_result(None)
                 print("------------")
 
-
+'''
             # check if marking has changed and if so, update it.
 
 def main():
@@ -521,7 +596,7 @@ def main():
         policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
         policy = policy.Policy(policy_dict, places_tup)
         project_path = "/home/pedroac/ros2_ws/src"
-        p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2'}
+        p_to_c_mapping = {'p1': [Simple, 'simple_1'], 'p2': [Simple, 'simple_2']}
 
         my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p1', 1)
         my_execution.ros_gspn_execution()
