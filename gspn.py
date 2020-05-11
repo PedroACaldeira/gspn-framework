@@ -332,22 +332,22 @@ class GSPN(object):
             arcs_in_aux, arcs_out_aux = self.get_arcs_dict()
             place_index = self.places_to_index[name]
 
-            arcs_in = {}
+            arcs_out = {}
             for place in arcs_in_aux:
                 if place == place_index:
-                    if place in arcs_in:
-                        arcs_in[place].append(arcs_in_aux[place])
+                    if place in arcs_out:
+                        arcs_out[place].append(arcs_in_aux[place])
                     else:
-                        arcs_in[place] = [arcs_in_aux[place]]
+                        arcs_out[place] = [arcs_in_aux[place]]
 
-            arcs_out = {}
+            arcs_in = {}
             for transition in arcs_out_aux:
                 for place in arcs_out_aux[transition]:
                     if place == place_index:
-                        if transition in arcs_out:
-                            arcs_out[transition].append(place)
+                        if transition in arcs_in:
+                            arcs_in[transition].append(place)
                         else:
-                            arcs_out[transition] = [place]
+                            arcs_in[transition] = [place]
 
         if type == 'transition':
             arcs_in_aux, arcs_out_aux = self.get_arcs_dict()

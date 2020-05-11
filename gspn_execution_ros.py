@@ -121,8 +121,14 @@ class GSPNExecutionROS(object):
     '''
 
     def topic_listener_callback(self, msg):
-        self.__client_node.get_logger().info('I heard Robot %s firing %s' % (msg.robot_id, msg.transition))
-        self.__transitions_fired.append([msg.transition, msg.robot_id])
+        if msg.robot_id != self.__robot_id:
+            self.__client_node.get_logger().info('I heard Robot %s firing %s' % (msg.robot_id, msg.transition))
+            # self.__transitions_fired.append([msg.transition, msg.robot_id])
+            print("BEFORE", self.__gspn.get_current_marking())
+            self.fire_execution(msg.transition)
+            print("AFTER", self.__gspn.get_current_marking())
+        else:
+            self.__client_node.get_logger().info('I heard myself firing %s' % msg.transition)
 
 
     def topic_talker_callback(self, fired_transition):
@@ -152,25 +158,35 @@ class GSPNExecutionROS(object):
         if status == GoalStatus.STATUS_SUCCEEDED:
             print(self.__action_client._action_name + ': Goal succeeded! Result: {0}'.format(result.transition))
 
-            # Now I listen to the topic and publish to it.
+            bool_output_arcs = self.check_output_arcs(self.__current_place)
 
+            if bool_output_arcs:
+                print("The place has output arcs.")
+                print("BEFORE", self.__gspn.get_current_marking())
+                if result.transition == 'None':
+                    print("Immediate transition")
+                    imm_transition_to_fire = self.get_policy_transition()
+                    self.fire_execution(imm_transition_to_fire)
+                    self.topic_talker_callback(imm_transition_to_fire)
+                else:
+                    print("exponential transition")
+                    self.fire_execution(result.transition)
+                    self.topic_talker_callback(result.transition)
 
-            # Now I give out the next goal.
-            res_policy = self.apply_policy(result.transition)
+                print("AFTER", self.__gspn.get_current_marking())
 
-            if res_policy == -2:
-                print("The place has no output arcs.")
-                self.__client_node.destroy_client(self.__action_client)
-                self.__client_node.destroy_node()
-            else:
                 action_type = self.__place_to_client_mapping[self.__current_place][0]
                 server_name = self.__place_to_client_mapping[self.__current_place][1]
                 self.__client_node.destroy_client(self.__action_client)
                 self.__action_client = rclpy.action.ActionClient(self.__client_node, action_type, server_name)
 
                 current_place = self.__current_place
-                print("current place is", current_place)
                 self.action_send_goal(current_place, action_type, server_name)
+
+            else:
+                print("The place has no output arcs.")
+                self.__client_node.destroy_client(self.__action_client)
+                self.__client_node.destroy_node()
 
         else:
             print(self.__action_client._action_name + ': Goal failed with status: {0}'.format(status))
@@ -212,10 +228,9 @@ class GSPNExecutionROS(object):
     GSPNs:
     - fire execution;
     - get_immediate_transition_result;
-    - apply_policy;
+    - check_output_arcs;
     - ros_gspn_execution.
     '''
-
 
     def fire_execution(self, transition):
         '''
@@ -324,48 +339,29 @@ class GSPNExecutionROS(object):
                 # self.__action_clients[token_id].set_state("Waiting")
 
 
-    def get_immediate_transition_result(self):
+    def get_policy_transition(self):
         execution_policy = self.get_policy()
         current_marking = self.__gspn.get_current_marking()
         order = execution_policy.get_places_tuple()
         marking_tuple = self.convert_to_tuple(current_marking, order)
         pol_dict = execution_policy.get_policy_dictionary()
         transition_dictionary = self.get_transitions(marking_tuple, pol_dict)
-        if transition_dictionary:
-            transition_list = []
-            probability_list = []
-            for transition in transition_dictionary:
-                transition_list.append(transition)
-                probability_list.append(transition_dictionary[transition])
-            transition_to_fire = np.random.choice(transition_list, 1, False, probability_list)[0]
-            print("TRANSITION TO FIRE", transition_to_fire)
-            return transition_to_fire
+        transition_list = []
+        probability_list = []
+        for transition in transition_dictionary:
+            transition_list.append(transition)
+            probability_list.append(transition_dictionary[transition])
+        transition_to_fire = np.random.choice(transition_list, 1, False, probability_list)[0]
+        print("TRANSITION TO FIRE", transition_to_fire)
+        return transition_to_fire
+
+    def check_output_arcs(self, place):
+        arcs = self.__gspn.get_connected_arcs(place, 'place')
+        arcs_out = arcs[1]
+        if len(arcs_out) >= 1:
+            return True
         else:
-            return -2
-
-
-    def apply_policy(self, result):
-        '''
-        Applies the calculated policy. If we have an immediate transition, the policy is checked. Otherwise, we simply
-        fire the transition that resulted from the function that was executed.
-        :param result: result of the current place function
-        :return: -2 if the current place has no output transitions. If successful, there is no return value
-        '''
-
-        print("BEFORE", self.__gspn.get_current_marking())
-        # IMMEDIATE transitions case
-        if result == 'None':
-            imm_transition = self.get_immediate_transition_result()
-            if imm_transition != -2:
-                self.fire_execution(imm_transition)
-                return imm_transition
-            else:
-                return -2
-
-        # EXPONENTIAL transitions case
-        else:
-            self.fire_execution(result)
-        print("AFTER", self.__gspn.get_current_marking())
+            return False
 
     def ros_gspn_execution(self):
         '''
@@ -411,13 +407,9 @@ class GSPNExecutionROS(object):
         # em vez de self__action_client pode ser self.__client_node._action_client.
         # pensa nisso.
         self.__action_client = rclpy.action.ActionClient(self.__client_node, action_type, server_name)
-        print("server name ", self.__action_client._action_name)
 
         current_place = self.__current_place
-        print("current place is", current_place)
         self.action_send_goal(current_place, action_type, server_name)
-        print("Sent goal.")
-
         rclpy.spin(self.__client_node)
 
 
@@ -473,7 +465,6 @@ class GSPNExecutionROS(object):
                 print("------------")
 
 '''
-            # check if marking has changed and if so, update it.
 
 def main():
 
@@ -608,12 +599,12 @@ def main():
         arc_in = {'p1': ['t1']}
         arc_out = {'t1': ['p2']}
         a, b = my_pn.add_arcs(arc_in, arc_out)
-        # Since I'm not using imm transitions, this part is irrelevant
+
         places_tup = ('p1', 'p2')
-        policy_dict = {(0, 1): {'t3': 0.5, 't4': 0.5}}
+        policy_dict = {(1, 1): {'t1': 1}}
         policy = policy.Policy(policy_dict, places_tup)
         project_path = "/home/pedroac/ros2_ws/src"
-        p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2'}
+        p_to_c_mapping = {'p1': [Simple, 'simple_1'], 'p2': [Simple, 'simple_2']}
 
         my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p2', 2)
         my_execution.ros_gspn_execution()
