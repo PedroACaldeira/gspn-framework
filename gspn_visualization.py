@@ -128,10 +128,12 @@ def background_check_liveness():
 @app.route('/background_check_throughputrate', methods=['GET', 'POST'])
 def background_check_throughputrate():
     my_pn.init_analysis()
-    text = request.form.get('throughput_rate_text', None)
-    processed_text = str(text)
-    throughput = my_pn.transition_throughput_rate(processed_text)
-    return jsonify("to-do")
+    if request.method == 'POST':
+        text = request.form['throughput_rate_text']
+        processed_text = str(text)
+        print("processed text", processed_text)
+        throughput = my_pn.transition_throughput_rate(processed_text)
+        return jsonify(processed_text)
 
 
 @app.route('/background_check_probntokens', methods=['GET', 'POST'])

@@ -34,10 +34,10 @@
             </div>
 
             <div id="ThroughputRate" class="data_entry">
-                <form action="{{ url_for('background_check_throughputrate') }}" method="post", target="throughputRateResult">
+                <form action="{{ url_for('background_check_throughputrate') }}" method="post" id="throughputRateForm" enctype="multipart/form-data">
                     <input name="throughput_rate_text" class="input_box">
                     <input id="checkThroughputRate" type="submit" class='new-button-data' value="Check Throughput Rate">
-                    <iframe id="throughputRateResult" name="throughputRateResult" class="result_box" >-</iframe>
+                    <output id="throughputRateResult" class="result_box" ></output>
                 </form>
             </div>
 
@@ -171,6 +171,25 @@
                 });
                 return false;
               });
+              $('#throughputRateForm').on('submit', function (e) {
+                e.preventDefault();
+
+                var form = $(this)[0];
+                var formData = new FormData(form);
+
+                $.ajax({
+                    url: '/background_check_throughputrate',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (data) {
+                        console.log(data);
+                        document.getElementById('throughputRateResult').innerHTML = data;
+                    }
+                });
+        });
+
             });
     </script>
 
