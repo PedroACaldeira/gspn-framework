@@ -70,7 +70,7 @@ class MinimalActionServer(Node):
 
         # Populate result message
         result = Simple.Result()
-        result.transition = 'None'
+        result.transition = 't2'
 
         self.get_logger().info('SERVER 2 : Returning result: {0}'.format(result.transition))
 

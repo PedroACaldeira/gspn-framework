@@ -43,6 +43,7 @@ class GSPNExecutionROS(object):
 
         self.__current_place indicates where the robot is
         self.__action_client is the action client of the robot
+        self.__robot_id is the id of the robot
         '''
         self.__gspn = gspn
         self.__token_positions = []
@@ -63,7 +64,6 @@ class GSPNExecutionROS(object):
         self.__current_place = initial_place
         self.__action_client = 0
         self.__robot_id = robot_id
-        self.__transitions_fired = []
 
     def get_path(self):
         return self.__project_path
@@ -115,15 +115,15 @@ class GSPNExecutionROS(object):
     our publishers/subscribers:
     - topic_listener_callback;
     - topic_talker_callback;
-    - action_send_goal;
-    -
-
+    - action_get_result_callback;
+    - action_goal_response_callback;
+    - action_feedback_callback;
+    - action_send_goal
     '''
 
     def topic_listener_callback(self, msg):
         if msg.robot_id != self.__robot_id:
             self.__client_node.get_logger().info('I heard Robot %s firing %s' % (msg.robot_id, msg.transition))
-            # self.__transitions_fired.append([msg.transition, msg.robot_id])
             print("BEFORE", self.__gspn.get_current_marking())
             self.fire_execution(msg.transition)
             print("AFTER", self.__gspn.get_current_marking())
@@ -166,8 +166,14 @@ class GSPNExecutionROS(object):
                 if result.transition == 'None':
                     print("Immediate transition")
                     imm_transition_to_fire = self.get_policy_transition()
-                    self.fire_execution(imm_transition_to_fire)
-                    self.topic_talker_callback(imm_transition_to_fire)
+                    if imm_transition_to_fire == False:
+                        print("The policy does not include this case: ", self.__gspn.get_current_marking())
+                        self.__client_node.destroy_client(self.__action_client)
+                        self.__client_node.destroy_node()
+                        return
+                    else:
+                        self.fire_execution(imm_transition_to_fire)
+                        self.topic_talker_callback(imm_transition_to_fire)
                 else:
                     print("exponential transition")
                     self.fire_execution(result.transition)
@@ -346,6 +352,8 @@ class GSPNExecutionROS(object):
         marking_tuple = self.convert_to_tuple(current_marking, order)
         pol_dict = execution_policy.get_policy_dictionary()
         transition_dictionary = self.get_transitions(marking_tuple, pol_dict)
+        if transition_dictionary == False:
+            return False
         transition_list = []
         probability_list = []
         for transition in transition_dictionary:
@@ -403,11 +411,7 @@ class GSPNExecutionROS(object):
         action_type = self.__place_to_client_mapping[self.__current_place][0]
         server_name = self.__place_to_client_mapping[self.__current_place][1]
 
-        # Setup client node with action client
-        # em vez de self__action_client pode ser self.__client_node._action_client.
-        # pensa nisso.
         self.__action_client = rclpy.action.ActionClient(self.__client_node, action_type, server_name)
-
         current_place = self.__current_place
         self.action_send_goal(current_place, action_type, server_name)
         rclpy.spin(self.__client_node)
@@ -612,19 +616,36 @@ def main():
 
     elif test_case == "c":
         my_pn = pn.GSPN()
-        places = my_pn.add_places(['p1', 'p2', 'p3'], [1, 1, 0])
-        trans = my_pn.add_transitions(['t1', 't2'], ['imm', 'imm'], [1, 1])
-        arc_in = {'p1': ['t1', 't2']}
-        arc_out = {'t1': ['p2'], 't2':['p3']}
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6'], [1, 0, 1, 0, 0, 0])
+        trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8'], ['exp', 'exp', 'exp', 'imm', 'imm', 'exp', 'exp', 'exp'], [1, 1, 1, 1, 1, 1, 1, 1])
+        arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p3': ['t3'], 'p4': ['t4', 't5'], 'p5': ['t6', 't7'], 'p6': ['t8']}
+        arc_out = {'t1': ['p2'], 't2':['p3'], 't3':['p4'], 't4':['p5'], 't5':['p1'], 't6':['p2'], 't7':['p6'], 't8':['p1']}
         a, b = my_pn.add_arcs(arc_in, arc_out)
 
-        places_tup = ('p1', 'p2', 'p3')
-        policy_dict = {(1, 1, 0): {'t2': 0, 't1': 1}}
+        places_tup = ('p1', 'p2', 'p3', 'p4', 'p5', 'p6')
+        policy_dict = {(0, 1, 0, 1, 0, 0): {'t4': 0, 't5': 1}, (1, 0, 0, 1, 0, 0): {'t4': 0, 't5': 1}}
         policy = policy.Policy(policy_dict, places_tup)
         project_path = "/home/pedroac/ros2_ws/src"
-        p_to_c_mapping = {'p1': 'Fibonacci.fibonacci_1', 'p2': 'Fibonacci.fibonacci_2', 'p3': 'Fibonacci.fibonacci_3'}
+        p_to_c_mapping = {'p1': [Simple, 'simple_1'], 'p2': [Simple, 'simple_2'], 'p3': [Simple, 'simple_3'], 'p4': [Simple, 'simple_4'], 'p5': [Simple, 'simple_5'], 'p6': [Simple, 'simple_6']}
 
-        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p1', 3)
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p1', 1)
+        my_execution.ros_gspn_execution()
+
+    elif test_case == "d":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6'], [1, 0, 1, 0, 0, 0])
+        trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8'], ['exp', 'exp', 'exp', 'imm', 'imm', 'exp', 'exp', 'exp'], [1, 1, 1, 1, 1, 1, 1, 1])
+        arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p3': ['t3'], 'p4': ['t4', 't5'], 'p5': ['t6', 't7'], 'p6': ['t8']}
+        arc_out = {'t1': ['p2'], 't2':['p3'], 't3':['p4'], 't4':['p5'], 't5':['p1'], 't6':['p2'], 't7':['p6'], 't8':['p1']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+
+        places_tup = ('p1', 'p2', 'p3', 'p4', 'p5', 'p6')
+        policy_dict = {(0, 1, 0, 1, 0, 0): {'t4': 0, 't5': 1}, (1, 0, 0, 1, 0, 0): {'t4': 0, 't5': 1},  (0, 0, 1, 1, 0, 0): {'t4': 0, 't5': 1}}
+        policy = policy.Policy(policy_dict, places_tup)
+        project_path = "/home/pedroac/ros2_ws/src"
+        p_to_c_mapping = {'p1': [Simple, 'simple_1'], 'p2': [Simple, 'simple_2'], 'p3': [Simple, 'simple_3'], 'p4': [Simple, 'simple_4'], 'p5': [Simple, 'simple_5'], 'p6': [Simple, 'simple_6']}
+
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p3', 2)
         my_execution.ros_gspn_execution()
 
     else:
