@@ -217,7 +217,7 @@
                     success: function (data) {
                         console.log(data);
                         if(data[0]=="NOT-ENABLED") {
-                            console.log("The transition is not enabled:", data[1])
+                            window.alert("The transition is not enabled: " + data[1])
                         }
                         else {
                             change_color(data[1], data[0]);
