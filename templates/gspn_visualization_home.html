@@ -13,6 +13,15 @@
       <a href=# id=test><button class='new-button'>Simulate 1 Step</button></a>
       <a href=# id=reset><button class='new-button new-button-red'>Reset Simulation</button></a>
     </div>
+
+    <div id="userTransition" class="data_entry">
+        <form action="{{ url_for('background_fire_chosen_transition') }}" method="post" id="userTransitionForm" enctype="multipart/form-data">
+            <input name="user_transition_text" class="input_box">
+            <input id="checkUserTransition" type="submit" class='new-button-data' value="Fire Chosen Transition">
+            <output id="userTransitionResult" class="result_box" ></output>
+        </form>
+    </div>
+
     <div id="frame_container">
         <div id="mynetwork"></div>
         <div id="dataAnalysis">
@@ -153,6 +162,9 @@
                   nodes.update({id:place, image:image_link});
                 }
             }
+
+
+
             $(function() {
               $('a#test').bind('click', function() {
                 $.getJSON('/background_process_test', function(data) {
@@ -160,6 +172,7 @@
                 });
                 return false;
               });
+
               $('a#reset').bind('click', function() {
                 $.getJSON('/background_reset_simulation', function(data) {
                   console.log(data);
@@ -171,6 +184,8 @@
                 });
                 return false;
               });
+
+
               $('#throughputRateForm').on('submit', function (e) {
                 e.preventDefault();
 
@@ -188,7 +203,33 @@
                         document.getElementById('throughputRateResult').innerHTML = data;
                     }
                 });
-        });
+              });
+
+
+              $('#userTransitionForm').on('submit', function (e) {
+                e.preventDefault();
+
+                var form = $(this)[0];
+                var formData = new FormData(form);
+
+                $.ajax({
+                    url: '/background_fire_chosen_transition',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (data) {
+                        console.log(data);
+                        if(data[0]=="NOT-ENABLED") {
+                            console.log("The transition is not enabled:", data[1])
+                        }
+                        else {
+                            change_color(data[1], data[0]);
+                        }
+                    }
+                });
+              });
+
 
             });
     </script>

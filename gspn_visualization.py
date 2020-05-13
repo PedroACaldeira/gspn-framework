@@ -112,6 +112,24 @@ def background_process_test():
     return jsonify(my_pn.get_current_marking(), marking_and_transition_list[1])
 
 
+@app.route('/background_fire_chosen_transition', methods=['GET', 'POST'])
+def background_fire_chosen_transition():
+    if request.method == 'POST':
+        text = request.form['user_transition_text']
+        processed_text = str(text)
+        enabled_transitions = my_pn.get_enabled_transitions()
+        print("enabled transitions ", enabled_transitions)
+        for exp_transition in enabled_transitions[0]:
+            if processed_text == exp_transition:
+                my_pn.fire_transition(processed_text)
+                return jsonify(my_pn.get_current_marking(), processed_text)
+        for imm_transition in enabled_transitions[1]:
+            if processed_text == imm_transition:
+                my_pn.fire_transition(processed_text)
+                return jsonify(my_pn.get_current_marking(), processed_text)
+        return jsonify("NOT-ENABLED", processed_text)
+
+
 @app.route('/background_reset_simulation')
 def background_reset_simulation():
     my_pn.reset_simulation()
