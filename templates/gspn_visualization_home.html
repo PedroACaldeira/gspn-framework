@@ -12,14 +12,10 @@
     <div class='button_container'>
       <a href=# id=test><button class='new-button'>Simulate 1 Step</button></a>
       <a href=# id=reset><button class='new-button new-button-red'>Reset Simulation</button></a>
-    </div>
-
-    <div id="userTransition" class="data_entry">
-        <form action="{{ url_for('background_fire_chosen_transition') }}" method="post" id="userTransitionForm" enctype="multipart/form-data">
-            <input name="user_transition_text" class="input_box">
-            <input id="checkUserTransition" type="submit" class='new-button-data' value="Fire Chosen Transition">
-            <output id="userTransitionResult" class="result_box" ></output>
-        </form>
+      <form action="{{ url_for('background_fire_chosen_transition') }}" method="post" id="userTransitionForm" enctype="multipart/form-data">
+          <input name="user_transition_text" class="in_box">
+          <input id="checkUserTransition" type="submit" class='new-button' value="Fire Chosen Transition">
+      </form>
     </div>
 
     <div id="frame_container">
