@@ -17,7 +17,7 @@
 
 
       <form action="{{ url_for('background_fire_chosen_transition') }}" method="post" id="userTransitionForm" enctype="multipart/form-data">
-          <select id="mySelect" name="chosenTransitionDropdown">
+          <select id="mySelect" name="chosenTransitionDropdown" class="dropdownStyle">
           </select>
           <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
           <script type=text/javascript>
@@ -273,8 +273,16 @@
                     processData: false,
                     contentType: false,
                     success: function (data) {
-                        console.log(data);
-                        change_color(data[1], data[0]);
+                        if(data== "NONE") {
+                            window.alert("No value inserted as input.");
+                        }
+                        else if(data== "ZERO") {
+                            window.alert("Zero steps is not a valid input.");
+                        }
+                        else {
+                            console.log(data);
+                            change_color(data[1], data[0]);
+                        }
                     }
                 });
               });
@@ -282,8 +290,6 @@
 
             });
     </script>
-
-
 
     {% endblock %}
 

@@ -116,9 +116,17 @@ def background_process_test():
 def background_simulate_n_steps():
     if request.method == 'POST':
         text = request.form['n_steps_text']
-        processed_text = int(text)
-        marking_and_transition_list = my_pn.simulate(nsteps=processed_text)
-        return jsonify(my_pn.get_current_marking(), marking_and_transition_list[-1])
+        if text == '':
+            return jsonify("NONE")
+        else:
+            processed_text = int(text)
+            if processed_text == 0:
+                return jsonify("ZERO")
+            else:
+                marking_and_transition_list = my_pn.simulate(nsteps=processed_text)
+                return jsonify(my_pn.get_current_marking(), marking_and_transition_list[-1])
+
+
 
 
 @app.route('/background_fire_chosen_transition', methods=['GET', 'POST'])

@@ -59,6 +59,19 @@
     padding:0;
 }
 
+.dropdownStyle {
+  margin: 2px; /* space between buttons */
+  background-color: white;
+  border: 1px solid black;
+  float:left;
+  border-radius: 8px;
+  width:110px;
+  color: black;
+  padding: 10px 16px;
+  font-size: 16px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
 .input_box {
   margin: 2px; /* space between buttons */
   background-color: white;
