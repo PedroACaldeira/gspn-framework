@@ -12,8 +12,21 @@
     <div class='button_container'>
       <a href=# id=test><button class='new-button'>Simulate 1 Step</button></a>
       <a href=# id=reset><button class='new-button new-button-red'>Reset Simulation</button></a>
+
+
+
+
       <form action="{{ url_for('background_fire_chosen_transition') }}" method="post" id="userTransitionForm" enctype="multipart/form-data">
-          <input name="user_transition_text" class="input_box">
+          <select id="mySelect" name="chosenTransitionDropdown">
+          </select>
+          <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+          <script type=text/javascript>
+            var parsed_transitions = JSON.parse('{{data.get_transitions() | tojson}}');
+            for (var transition in parsed_transitions) {
+                 console.log(transition);
+                 $('<option value="'+ transition +'">' + transition + '</option>').appendTo('#mySelect');
+            }
+          </script>
           <input id="checkUserTransition" type="submit" class='new-button' value="Fire Chosen Transition">
       </form>
       <form action="{{ url_for('background_simulate_n_steps') }}" method="post" id="nStepsForm" enctype="multipart/form-data">

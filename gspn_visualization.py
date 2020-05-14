@@ -124,10 +124,9 @@ def background_simulate_n_steps():
 @app.route('/background_fire_chosen_transition', methods=['GET', 'POST'])
 def background_fire_chosen_transition():
     if request.method == 'POST':
-        text = request.form['user_transition_text']
+        text = request.form['chosenTransitionDropdown']
         processed_text = str(text)
         enabled_transitions = my_pn.get_enabled_transitions()
-        print("enabled transitions ", enabled_transitions)
         for exp_transition in enabled_transitions[0]:
             if processed_text == exp_transition:
                 my_pn.fire_transition(processed_text)
