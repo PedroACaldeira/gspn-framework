@@ -61,11 +61,11 @@
 
 .input_box {
   margin: 2px; /* space between buttons */
-  background-color: #ffffff;
+  background-color: white;
+  border: 1px solid black;
   float:left;
   border-radius: 8px;
-  border: none;
-  width:70px;
+  width:80px;
   color: black;
   padding: 10px 16px;
   font-size: 16px;
@@ -73,15 +73,15 @@
 }
 
 .result_box {
-  margin: 5px;
-  background-color: #ffffff;
-  width:100px;
-  height:40px;
-  border-radius: 8px;
-  border: none;
-  color: black;
+  margin: 2px; /* space between buttons */
+  background-color: white;
+  border: 1px solid black;
   float:right;
-  text-align: center;
+  border-radius: 8px;
+  width:80px;
+  height: 15px;
+  color: black;
+  padding: 10px 16px;
   font-size: 16px;
   font-family: Arial, Helvetica, sans-serif;
 }

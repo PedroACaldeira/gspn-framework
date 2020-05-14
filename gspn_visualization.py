@@ -136,11 +136,12 @@ def background_reset_simulation():
     return jsonify(my_pn.get_current_marking())
 
 
-@app.route('/background_check_liveness')
+@app.route('/background_check_liveness', methods=['GET', 'POST'])
 def background_check_liveness():
     my_pn.init_analysis()
-    liveness_check = my_pn.liveness()
-    return jsonify(liveness_check)
+    if request.method == 'POST':
+        liveness_check = my_pn.liveness()
+        return jsonify(liveness_check)
 
 
 @app.route('/background_check_throughputrate', methods=['GET', 'POST'])

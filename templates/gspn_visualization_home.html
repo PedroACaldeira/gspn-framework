@@ -13,7 +13,7 @@
       <a href=# id=test><button class='new-button'>Simulate 1 Step</button></a>
       <a href=# id=reset><button class='new-button new-button-red'>Reset Simulation</button></a>
       <form action="{{ url_for('background_fire_chosen_transition') }}" method="post" id="userTransitionForm" enctype="multipart/form-data">
-          <input name="user_transition_text" class="in_box">
+          <input name="user_transition_text" class="input_box">
           <input id="checkUserTransition" type="submit" class='new-button' value="Fire Chosen Transition">
       </form>
     </div>
@@ -24,57 +24,59 @@
 
             <table style="width:100%">
                 <tr>
-                    <th class="analysis-title" style="text-align:left;">Input</th>
+                    <th class="analysis-title">Input</th>
                     <th class="analysis-title">Analysis Tools</th>
-                    <th class="analysis-title" style="text-align:right;">Output</th>
+                    <th class="analysis-title">Output</th>
                 </tr>
 
+                <tr id="Liveness" class="data_entry">
+                    <form action="{{ url_for('background_check_liveness') }}" method="post" id="livenessForm" enctype="multipart/form-data">
+                        <th></th>
+                        <th><input id="checkLiveness" type="submit" class='new-button-data' value="Check Liveness"></th>
+                        <th><output id="liveResult" class="result_box" ></output></th>
+                    </form>
+                </tr>
+
+                <tr id="ThroughputRate" class="data_entry">
+                    <form action="{{ url_for('background_check_throughputrate') }}" method="post" id="throughputRateForm" enctype="multipart/form-data">
+                        <th> <input name="throughput_rate_text" class="input_box"> </th>
+                        <th><input id="checkThroughputRate" type="submit" class='new-button-data' value="Check Throughput Rate"></th>
+                        <th><output id="throughputRateResult" class="result_box" ></output></th>
+                    </form>
+                </tr>
+
+                <tr id="ProbNTokens" class="data_entry">
+                    <form action="{{ url_for('background_check_probntokens') }}" method="post", target="probNTokensResult">
+                        <th><input name="prob_n_tokens_text" class="input_box"></th>
+                        <th><input id="checkProbNTokens" type="submit" class='new-button-data' value="Prob N Tokens"></th>
+                        <th><iframe id="probNTokensResult" name="probNTokensResult" class="result_box" >-</iframe></th>
+                    </form>
+                </tr>
+
+                <tr id="ExpectedNTokens" class="data_entry">
+                    <form action="{{ url_for('background_check_expectedntokens') }}" method="post", target="expectedNTokensResult">
+                        <th><input name="expected_n_tokens_text" class="input_box"></th>
+                        <th><input id="checkExpectedNTokens" type="submit" class='new-button-data' value="Check Expected N Tokens"></th>
+                        <th><iframe id="expectedNTokensResult" name="expectedNTokensResult" class="result_box" >-</iframe></th>
+                    </form>
+                </tr>
+
+                <tr id="TransitionProbEvolution" class="data_entry">
+                    <form action="{{ url_for('background_check_transitionprobevo') }}" method="post", target="transitionProbEvoResult">
+                        <th><input name="transition_prob_evo_text" class="input_box"></th>
+                        <th><input id="checkTransitionProbEvo" type="submit" class='new-button-data' value="Check Transition Probability Evolution"></th>
+                        <th><iframe id="transitionProbEvoResult" name="transitionProbEvoResult" class="result_box" >-</iframe></th>
+                    </form>
+                </tr>
+
+                <tr id="MeanWaitTime" class="data_entry">
+                    <form action="{{ url_for('background_check_meanwaittime') }}" method="post", target="meanWaitTimeResult">
+                        <th><input name="mean_wait_time_text" class="input_box"></th>
+                        <th><input id="checkMeanWaitTime" type="submit" class='new-button-data' value="Check Mean Wait Time"></th>
+                        <th><iframe id="meanWaitTimeResult" name="meanWaitTimeResult" class="result_box" >-</iframe></th>
+                    </form>
+                </tr>
             </table>
-
-            <div id="Liveness" class="data_entry">
-                <form action="{{ url_for('background_check_liveness') }}" method="get" target="liveResult">
-                    <input id="checkLiveness" type="submit" class='new-button-data' value="Check Liveness">
-                    <iframe id="liveResult" name="liveResult" class="result_box" >-</iframe>
-                </form>
-            </div>
-
-            <div id="ThroughputRate" class="data_entry">
-                <form action="{{ url_for('background_check_throughputrate') }}" method="post" id="throughputRateForm" enctype="multipart/form-data">
-                    <input name="throughput_rate_text" class="input_box">
-                    <input id="checkThroughputRate" type="submit" class='new-button-data' value="Check Throughput Rate">
-                    <output id="throughputRateResult" class="result_box" ></output>
-                </form>
-            </div>
-
-            <div id="ProbNTokens" class="data_entry">
-                <form action="{{ url_for('background_check_probntokens') }}" method="post", target="probNTokensResult">
-                    <input name="prob_n_tokens_text" class="input_box">
-                    <input id="checkProbNTokens" type="submit" class='new-button-data' value="Prob N Tokens">
-                    <iframe id="probNTokensResult" name="probNTokensResult" class="result_box" >-</iframe>
-                </form>
-            </div>
-
-            <div id="ExpectedNTokens" class="data_entry">
-                <form action="{{ url_for('background_check_expectedntokens') }}" method="post", target="expectedNTokensResult">
-                    <input name="expected_n_tokens_text" class="input_box">
-                    <input id="checkExpectedNTokens" type="submit" class='new-button-data' value="Check Expected N Tokens">
-                    <iframe id="expectedNTokensResult" name="expectedNTokensResult" class="result_box" >-</iframe>
-                </form>
-            </div>
-            <div id="TransitionProbEvolution" class="data_entry">
-                <form action="{{ url_for('background_check_transitionprobevo') }}" method="post", target="transitionProbEvoResult">
-                    <input name="transition_prob_evo_text" class="input_box">
-                    <input id="checkTransitionProbEvo" type="submit" class='new-button-data' value="Check Transition Probability Evolution">
-                    <iframe id="transitionProbEvoResult" name="transitionProbEvoResult" class="result_box" >-</iframe>
-                </form>
-            </div>
-            <div id="MeanWaitTime" class="data_entry">
-                <form action="{{ url_for('background_check_meanwaittime') }}" method="post", target="meanWaitTimeResult">
-                    <input name="mean_wait_time_text" class="input_box">
-                    <input id="checkMeanWaitTime" type="submit" class='new-button-data' value="Check Mean Wait Time">
-                    <iframe id="meanWaitTimeResult" name="meanWaitTimeResult" class="result_box" >-</iframe>
-                </form>
-            </div>
         </div>
         <div id="clear"></div>
     </div>
@@ -159,8 +161,6 @@
                 }
             }
 
-
-
             $(function() {
               $('a#test').bind('click', function() {
                 $.getJSON('/background_process_test', function(data) {
@@ -181,6 +181,24 @@
                 return false;
               });
 
+              $('#livenessForm').on('submit', function (e) {
+                e.preventDefault();
+
+                var form = $(this)[0];
+                var formData = new FormData(form);
+
+                $.ajax({
+                    url: '/background_check_liveness',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (data) {
+                        console.log(data);
+                        document.getElementById('liveResult').innerHTML = data;
+                    }
+                });
+              });
 
               $('#throughputRateForm').on('submit', function (e) {
                 e.preventDefault();
@@ -200,7 +218,6 @@
                     }
                 });
               });
-
 
               $('#userTransitionForm').on('submit', function (e) {
                 e.preventDefault();
