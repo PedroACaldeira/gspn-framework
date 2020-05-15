@@ -127,8 +127,6 @@ def background_simulate_n_steps():
                 return jsonify(my_pn.get_current_marking(), marking_and_transition_list[-1])
 
 
-
-
 @app.route('/background_fire_chosen_transition', methods=['GET', 'POST'])
 def background_fire_chosen_transition():
     if request.method == 'POST':
@@ -164,10 +162,12 @@ def background_check_liveness():
 def background_check_throughputrate():
     my_pn.init_analysis()
     if request.method == 'POST':
-        text = request.form['throughput_rate_text']
+        text = request.form['throughput_rate_dropdown']
         processed_text = str(text)
         print("processed text", processed_text)
         throughput = my_pn.transition_throughput_rate(processed_text)
+        rounded_value = round(throughput, 1)
+        print("rounded_value ", rounded_value)
         return jsonify(processed_text)
 
 

@@ -23,7 +23,6 @@
           <script type=text/javascript>
             var parsed_transitions = JSON.parse('{{data.get_transitions() | tojson}}');
             for (var transition in parsed_transitions) {
-                 console.log(transition);
                  $('<option value="'+ transition +'">' + transition + '</option>').appendTo('#mySelect');
             }
           </script>
@@ -56,7 +55,14 @@
 
                 <tr id="ThroughputRate" class="data_entry">
                     <form action="{{ url_for('background_check_throughputrate') }}" method="post" id="throughputRateForm" enctype="multipart/form-data">
-                        <th> <input name="throughput_rate_text" class="input_box"> </th>
+                        <th> <select id="throughput_select" name="throughput_rate_dropdown" class="dropdownStyle"> </select> </th>
+                        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+                        <script type=text/javascript>
+                            var parsed_transitions = JSON.parse('{{data.get_transitions() | tojson}}');
+                            for (var transition in parsed_transitions) {
+                                 $('<option value="'+ transition +'">' + transition + '</option>').appendTo('#throughput_select');
+                            }
+                        </script>
                         <th><input id="checkThroughputRate" type="submit" class='new-button-data' value="Check Throughput Rate"></th>
                         <th><output id="throughputRateResult" class="result_box" ></output></th>
                     </form>
@@ -112,9 +118,7 @@
 
       // Create nodes for the transitions
       var parsed_transitions = JSON.parse('{{data.get_transitions() | tojson}}');
-      console.log(parsed_transitions);
       for(transition in parsed_transitions) {
-        console.log(parsed_transitions[transition][0]);
         if(parsed_transitions[transition][0] == 'exp') {
           nodes.add({id:transition, title:transition, color: {background:'white', border:'black'}, shape:'square', physics:'false', label:transition, size:10});
         }
@@ -167,7 +171,6 @@
               return new Promise(resolve => setTimeout(resolve, ms));
             }
             async function change_color(transition, places) {
-                console.log(transition);
                 nodes.update({id:transition, color:{border:'yellow'}, shadow:{enabled:true, color:'yellow', x:0, y:0, size:20}});
                 await sleep(1000);
                 nodes.update({id:transition, color:{border:'black'}, shadow:{enabled:false}});
@@ -188,7 +191,6 @@
 
               $('a#reset').bind('click', function() {
                 $.getJSON('/background_reset_simulation', function(data) {
-                  console.log(data);
                   for(place in data) {
                     var marking = data[place];
                     image_link = 'https://raw.githubusercontent.com/PedroACaldeira/gspn-framework/master/images/token_' + marking + '.png';
@@ -211,7 +213,6 @@
                     processData: false,
                     contentType: false,
                     success: function (data) {
-                        console.log(data);
                         document.getElementById('liveResult').innerHTML = data;
                     }
                 });
@@ -249,7 +250,6 @@
                     processData: false,
                     contentType: false,
                     success: function (data) {
-                        console.log(data);
                         if(data[0]=="NOT-ENABLED") {
                             window.alert("The transition is not enabled: " + data[1])
                         }
@@ -280,7 +280,6 @@
                             window.alert("Zero steps is not a valid input.");
                         }
                         else {
-                            console.log(data);
                             change_color(data[1], data[0]);
                         }
                     }
