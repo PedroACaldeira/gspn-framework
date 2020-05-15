@@ -179,12 +179,13 @@ def background_check_probntokens():
     return jsonify("to-do")
 
 
-@app.route('/background_check_exepectedntokens', methods=['GET', 'POST'])
-def background_check_expectedntokens():
+@app.route('/background_expected_n_tokens', methods=['GET', 'POST'])
+def background_expected_n_tokens():
     my_pn.init_analysis()
-    text = request.form.get('expected_n_tokens_text', None)
-    processed_text = str(text)
-    return jsonify("to-do")
+    if request.method == 'POST':
+        text = request.form.get('expected_n_tokens_dropdown', None)
+        processed_text = str(text)
+        return jsonify(processed_text)
 
 
 @app.route('/background_check_transitionprobevo', methods=['GET', 'POST'])

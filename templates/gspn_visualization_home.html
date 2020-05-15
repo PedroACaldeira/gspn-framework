@@ -77,10 +77,17 @@
                 </tr>
 
                 <tr id="ExpectedNTokens" class="data_entry">
-                    <form action="{{ url_for('background_check_expectedntokens') }}" method="post", target="expectedNTokensResult">
-                        <th><input name="expected_n_tokens_text" class="input_box"></th>
+                    <form action="{{ url_for('background_expected_n_tokens') }}" method="post" id="expectedntokensForm" enctype="multipart/form-data">
+                        <th><select id="expected_n_tokens_select" name="expected_n_tokens_dropdown" class="dropdownStyle"></select></th>
+                        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+                        <script type=text/javascript>
+                            var parsed_places = JSON.parse('{{data.get_places() | tojson}}');
+                            for (var place in parsed_places) {
+                                 $('<option value="'+ place +'">' + place + '</option>').appendTo('#expected_n_tokens_select');
+                            }
+                        </script>
                         <th><input id="checkExpectedNTokens" type="submit" class='new-button-data' value="Check Expected N Tokens"></th>
-                        <th><iframe id="expectedNTokensResult" name="expectedNTokensResult" class="result_box" >-</iframe></th>
+                        <th><output id="expectedNTokensResult" class="result_box" ></output></th>
                     </form>
                 </tr>
 
@@ -236,6 +243,27 @@
                     }
                 });
               });
+
+
+              $('#expectedntokensForm').on('submit', function (e) {
+                e.preventDefault();
+
+                var form = $(this)[0];
+                var formData = new FormData(form);
+
+                $.ajax({
+                    url: '/background_expected_n_tokens',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (data) {
+                        console.log(data);
+                        document.getElementById('expectedNTokensResult').innerHTML = data;
+                    }
+                });
+              });
+
 
               $('#userTransitionForm').on('submit', function (e) {
                 e.preventDefault();
