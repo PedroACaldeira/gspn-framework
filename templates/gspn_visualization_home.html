@@ -100,10 +100,17 @@
                 </tr>
 
                 <tr id="MeanWaitTime" class="data_entry">
-                    <form action="{{ url_for('background_check_meanwaittime') }}" method="post", target="meanWaitTimeResult">
-                        <th><input name="mean_wait_time_text" class="input_box"></th>
+                    <form action="{{ url_for('background_check_mean_wait_time') }}" method="post" id="meanwaittimeForm" enctype="multipart/form-data">
+                        <th><select id="mean_wait_time_select" name="mean_wait_time_dropdown" class="dropdownStyle"></select></th>
+                        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+                        <script type=text/javascript>
+                            var parsed_places = JSON.parse('{{data.get_places() | tojson}}');
+                            for (var place in parsed_places) {
+                                 $('<option value="'+ place +'">' + place + '</option>').appendTo('#mean_wait_time_select');
+                            }
+                        </script>
                         <th><input id="checkMeanWaitTime" type="submit" class='new-button-data' value="Check Mean Wait Time"></th>
-                        <th><iframe id="meanWaitTimeResult" name="meanWaitTimeResult" class="result_box" >-</iframe></th>
+                        <th><output id="meanWaitTimeResult" class="result_box" ></output></th>
                     </form>
                 </tr>
             </table>
@@ -260,6 +267,26 @@
                     success: function (data) {
                         console.log(data);
                         document.getElementById('expectedNTokensResult').innerHTML = data;
+                    }
+                });
+              });
+
+
+              $('#meanwaittimeForm').on('submit', function (e) {
+                e.preventDefault();
+
+                var form = $(this)[0];
+                var formData = new FormData(form);
+
+                $.ajax({
+                    url: '/background_check_mean_wait_time',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (data) {
+                        console.log(data);
+                        document.getElementById('meanWaitTimeResult').innerHTML = data;
                     }
                 });
               });

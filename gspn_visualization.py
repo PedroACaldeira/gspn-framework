@@ -196,12 +196,13 @@ def background_check_transitionprobevo():
     return jsonify("to-do")
 
 
-@app.route('/background_check_meanwaittime', methods=['GET', 'POST'])
-def background_check_meanwaittime():
-    my_pn.init_analysis()
-    text = request.form.get('mean_wait_time_text', None)
-    processed_text = str(text)
-    return jsonify("to-do")
+@app.route('/background_check_mean_wait_time', methods=['GET', 'POST'])
+def background_check_mean_wait_time():
+    if request.method == 'POST':
+        my_pn.init_analysis()
+        text = request.form.get('mean_wait_time_dropdown', None)
+        processed_text = str(text)
+        return jsonify(processed_text)
 
 
 @app.route("/about")
