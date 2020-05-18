@@ -136,12 +136,12 @@ class GSPNExecutionROS(object):
         # - robot_id;
         # - timestamp.
         msg = GSPNFiringData()
-        current_time = datetime.now()
-        timestamp = current_time.time()
+        current_time = self.__client_node.get_clock().now()
         msg.transition = str(fired_transition)
         msg.marking = str(self.__gspn.get_current_marking())
         msg.robot_id = self.__robot_id
-        msg.timestamp = str(timestamp)
+        print("current time ", current_time)
+        msg.timestamp = str(current_time)
 
         self.__client_node.publisher.publish(msg)
         self.__client_node.get_logger().info('Robot %s firing %s'% (msg.robot_id, msg.transition))
