@@ -24,11 +24,10 @@ from . import gspn_executor
 
 class GSPNExecutionROS(object):
 
-    def __init__(self, gspn, place_to_client_mapping, output_to_transition_mapping, policy, project_path, initial_place, robot_id):
+    def __init__(self, gspn, place_to_client_mapping, policy, project_path, initial_place, robot_id):
         '''
         :param gspn: a previously created gspn
         :param place_to_client_mapping: dictionary where key is the place and the value is the function
-        :param output_to_transition_mapping: dictionary where key is the output and the value is the transition
         :param policy: Policy object
         :param project_path: string with project path
         :param initial_place: string with the name of the robot's initial place
@@ -49,7 +48,6 @@ class GSPNExecutionROS(object):
         self.__token_positions = []
 
         self.__place_to_client_mapping = place_to_client_mapping
-        self.__output_to_transition_mapping = output_to_transition_mapping
 
         self.__policy = policy
         self.__project_path = project_path
@@ -176,6 +174,7 @@ class GSPNExecutionROS(object):
                         self.topic_talker_callback(imm_transition_to_fire)
                 else:
                     print("exponential transition")
+                    print(result.transition)
                     self.fire_execution(result.transition)
                     self.topic_talker_callback(result.transition)
 
@@ -475,12 +474,44 @@ def main():
     from concurrent.futures.thread import ThreadPoolExecutor
     from . import policy
     from . import gspn as pn
+    from . import gspn_tools
     import os
     import numpy as np
     import rclpy
     from rclpy.node import Node
     import sys
+    import json
+    import ast
 
+    #json_file = input("Insert JSON file with GSPN Execution general elements: ")
+    #file_to_open = str(json_file)
+    project_path = "/home/pedroac/ros2_ws/src/gspn_framework/gspn_framework"
+
+    sys.path.append(os.path.join(project_path))
+
+    with open('/home/pedroac/ros2_ws/src/gspn_framework/gspn_framework/gspn_execution_input.json') as f:
+        data = json.load(f)
+
+    tool = gspn_tools.GSPNtools()
+    to_open = '/home/pedroac/ros2_ws/src/gspn_framework/gspn_framework/' + data["gspn"]
+    my_pn = tool.import_xml(to_open)[0]
+
+    p_to_c_mapping = ast.literal_eval(data["place_to_client_mapping"])
+    # On the JSON I have to include Simple inside a string in order to work well.
+    # And so, now I need to parse it and change its value.
+    for place in p_to_c_mapping:
+        if p_to_c_mapping[place][0] == 'Simple':
+            p_to_c_mapping[place][0] = Simple
+
+    places_tuple = ast.literal_eval(data["places_tuple"])
+    policy_dictionary = ast.literal_eval(data["policy_dictionary"])
+
+    user_robot_id = input("Please insert this robot's id: ")
+    user_current_place = input("Please insert the robot's current place: ")
+
+    my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, policy, project_path, str(user_current_place), int(user_robot_id))
+    my_execution.ros_gspn_execution()
+'''
     test_case = input("Enter case number to test: ")
 
     if test_case == "1":
@@ -616,40 +647,59 @@ def main():
 
     elif test_case == "c":
         my_pn = pn.GSPN()
-        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6'], [1, 0, 1, 0, 0, 0])
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6'], [1, 0, 1, 0, 0, 1])
         trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8'], ['exp', 'exp', 'exp', 'imm', 'imm', 'exp', 'exp', 'exp'], [1, 1, 1, 1, 1, 1, 1, 1])
         arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p3': ['t3'], 'p4': ['t4', 't5'], 'p5': ['t6', 't7'], 'p6': ['t8']}
         arc_out = {'t1': ['p2'], 't2':['p3'], 't3':['p4'], 't4':['p5'], 't5':['p1'], 't6':['p2'], 't7':['p6'], 't8':['p1']}
         a, b = my_pn.add_arcs(arc_in, arc_out)
 
         places_tup = ('p1', 'p2', 'p3', 'p4', 'p5', 'p6')
-        policy_dict = {(0, 1, 0, 1, 0, 0): {'t4': 0, 't5': 1}, (1, 0, 0, 1, 0, 0): {'t4': 0, 't5': 1}}
+        policy_dict = {(0, 1, 0, 1, 0, 0): {'t4': 0, 't5': 1}, (1, 0, 0, 1, 0, 0): {'t4': 0, 't5': 1}, (1, 0, 1, 1, 0, 0): {'t4': 0, 't5': 1}}
         policy = policy.Policy(policy_dict, places_tup)
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': [Simple, 'simple_1'], 'p2': [Simple, 'simple_2'], 'p3': [Simple, 'simple_3'], 'p4': [Simple, 'simple_4'], 'p5': [Simple, 'simple_5'], 'p6': [Simple, 'simple_6']}
 
-        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p1', 1)
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, policy, project_path, 'p1', 1)
         my_execution.ros_gspn_execution()
 
     elif test_case == "d":
         my_pn = pn.GSPN()
-        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6'], [1, 0, 1, 0, 0, 0])
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6'], [1, 0, 1, 0, 0, 1])
         trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8'], ['exp', 'exp', 'exp', 'imm', 'imm', 'exp', 'exp', 'exp'], [1, 1, 1, 1, 1, 1, 1, 1])
         arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p3': ['t3'], 'p4': ['t4', 't5'], 'p5': ['t6', 't7'], 'p6': ['t8']}
         arc_out = {'t1': ['p2'], 't2':['p3'], 't3':['p4'], 't4':['p5'], 't5':['p1'], 't6':['p2'], 't7':['p6'], 't8':['p1']}
         a, b = my_pn.add_arcs(arc_in, arc_out)
 
         places_tup = ('p1', 'p2', 'p3', 'p4', 'p5', 'p6')
-        policy_dict = {(0, 1, 0, 1, 0, 0): {'t4': 0, 't5': 1}, (1, 0, 0, 1, 0, 0): {'t4': 0, 't5': 1},  (0, 0, 1, 1, 0, 0): {'t4': 0, 't5': 1}}
+        policy_dict = {(0, 1, 0, 1, 0, 0): {'t4': 0, 't5': 1}, (1, 0, 0, 1, 0, 0): {'t4': 0, 't5': 1}, (1, 0, 1, 1, 0, 0): {'t4': 0, 't5': 1}}
         policy = policy.Policy(policy_dict, places_tup)
         project_path = "/home/pedroac/ros2_ws/src"
         p_to_c_mapping = {'p1': [Simple, 'simple_1'], 'p2': [Simple, 'simple_2'], 'p3': [Simple, 'simple_3'], 'p4': [Simple, 'simple_4'], 'p5': [Simple, 'simple_5'], 'p6': [Simple, 'simple_6']}
 
-        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, True, policy, project_path, 'p3', 2)
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, policy, project_path, 'p3', 2)
+        my_execution.ros_gspn_execution()
+
+
+    elif test_case == "e":
+        my_pn = pn.GSPN()
+        places = my_pn.add_places(['p1', 'p2', 'p3', 'p4', 'p5', 'p6'], [1, 0, 1, 0, 0, 1])
+        trans = my_pn.add_transitions(['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8'], ['exp', 'exp', 'exp', 'imm', 'imm', 'exp', 'exp', 'exp'], [1, 1, 1, 1, 1, 1, 1, 1])
+        arc_in = {'p1': ['t1'], 'p2': ['t2'], 'p3': ['t3'], 'p4': ['t4', 't5'], 'p5': ['t6', 't7'], 'p6': ['t8']}
+        arc_out = {'t1': ['p2'], 't2':['p3'], 't3':['p4'], 't4':['p5'], 't5':['p1'], 't6':['p2'], 't7':['p6'], 't8':['p1']}
+        a, b = my_pn.add_arcs(arc_in, arc_out)
+
+        places_tup = ('p1', 'p2', 'p3', 'p4', 'p5', 'p6')
+        policy_dict = {(0, 1, 0, 1, 0, 0): {'t4': 0, 't5': 1}, (1, 0, 0, 1, 0, 0): {'t4': 0, 't5': 1}, (1, 0, 1, 1, 0, 0): {'t4': 0, 't5': 1}}
+        policy = policy.Policy(policy_dict, places_tup)
+        project_path = "/home/pedroac/ros2_ws/src"
+        p_to_c_mapping = {'p1': [Simple, 'simple_1'], 'p2': [Simple, 'simple_2'], 'p3': [Simple, 'simple_3'], 'p4': [Simple, 'simple_4'], 'p5': [Simple, 'simple_5'], 'p6': [Simple, 'simple_6']}
+
+        my_execution = GSPNExecutionROS(my_pn, p_to_c_mapping, policy, project_path, 'p6', 3)
         my_execution.ros_gspn_execution()
 
     else:
         print("Sorry, that test is not available yet. Try again in a few months!")
+    '''
 
 if __name__ == "__main__":
     main()

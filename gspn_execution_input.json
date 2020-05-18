@@ -1,0 +1,5 @@
+{ "gspn":"example_gspn.xml",
+  "place_to_client_mapping": "{'p1': ['Simple', 'simple_1'], 'p2': ['Simple', 'simple_2']}",
+  "places_tuple": "('p1', 'p2')",
+  "policy_dictionary": "{(1, 1): {'t4': 0, 't5': 1}}"
+}
