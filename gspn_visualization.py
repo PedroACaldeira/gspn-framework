@@ -109,7 +109,7 @@ def use_xml():
 @app.route('/background_process_test')
 def background_process_test():
     marking_and_transition_list = my_pn.simulate()
-    return jsonify(my_pn.get_current_marking(), marking_and_transition_list[1])
+    return jsonify(my_pn.get_current_marking(), marking_and_transition_list[1], my_pn.get_enabled_transitions())
 
 
 @app.route('/background_simulate_n_steps', methods=['GET', 'POST'])
@@ -132,22 +132,14 @@ def background_fire_chosen_transition():
     if request.method == 'POST':
         text = request.form['chosenTransitionDropdown']
         processed_text = str(text)
-        enabled_transitions = my_pn.get_enabled_transitions()
-        for exp_transition in enabled_transitions[0]:
-            if processed_text == exp_transition:
-                my_pn.fire_transition(processed_text)
-                return jsonify(my_pn.get_current_marking(), processed_text)
-        for imm_transition in enabled_transitions[1]:
-            if processed_text == imm_transition:
-                my_pn.fire_transition(processed_text)
-                return jsonify(my_pn.get_current_marking(), processed_text)
-        return jsonify("NOT-ENABLED", processed_text)
+        my_pn.fire_transition(processed_text)
+        return jsonify(my_pn.get_current_marking(), processed_text, my_pn.get_enabled_transitions())
 
 
 @app.route('/background_reset_simulation')
 def background_reset_simulation():
     my_pn.reset_simulation()
-    return jsonify(my_pn.get_current_marking())
+    return jsonify(my_pn.get_current_marking(), my_pn.get_enabled_transitions())
 
 
 @app.route('/background_check_liveness', methods=['GET', 'POST'])
