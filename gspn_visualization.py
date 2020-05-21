@@ -109,7 +109,8 @@ def use_xml():
 @app.route('/background_process_test')
 def background_process_test():
     marking_and_transition_list = my_pn.simulate()
-    return jsonify(my_pn.get_current_marking(), marking_and_transition_list[1], my_pn.get_enabled_transitions())
+    print("marking and trans ", marking_and_transition_list)
+    return jsonify(my_pn.get_current_marking(), marking_and_transition_list[-1][0], my_pn.get_enabled_transitions())
 
 
 @app.route('/background_simulate_n_steps', methods=['GET', 'POST'])
@@ -124,7 +125,8 @@ def background_simulate_n_steps():
                 return jsonify("ZERO")
             else:
                 marking_and_transition_list = my_pn.simulate(nsteps=processed_text)
-                return jsonify(my_pn.get_current_marking(), marking_and_transition_list[-1])
+                print("marking and trans ", marking_and_transition_list)
+                return jsonify(marking_and_transition_list, my_pn.get_enabled_transitions())
 
 
 @app.route('/background_fire_chosen_transition', methods=['GET', 'POST'])

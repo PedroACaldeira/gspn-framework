@@ -196,6 +196,28 @@
                 }
             }
 
+            async function change_color_n(full_data) {
+                var transitions = full_data[full_data.length - 1];
+                console.log(transitions);
+                for(i = 1; i < full_data.length - 1; i++) {
+                    console.log("oi");
+                    console.log(full_data[i]);
+                    nodes.update({id:transitions[i-1], color:{border:'yellow'}, shadow:{enabled:true, color:'yellow', x:0, y:0, size:20}});
+                    await sleep(1000);
+                    nodes.update({id:transitions[i-1], color:{border:'black'}, shadow:{enabled:false}});
+                    for(place in full_data[i]) {
+                      console.log("place");
+                      console.log(place);
+                      console.log("place");
+                      var marking = full_data[i][place];
+                      console.log(marking);
+                      image_link = 'https://raw.githubusercontent.com/PedroACaldeira/gspn-framework/master/images/token_' + marking + '.png';
+                      nodes.update({id:place, image:image_link});
+                    }
+                }
+            }
+
+
             $(function() {
               $('a#test').bind('click', function() {
                 $.getJSON('/background_process_test', function(data) {
@@ -211,6 +233,42 @@
                     }
                 });
                 return false;
+              });
+
+              $('#nStepsForm').on('submit', function (e) {
+                e.preventDefault();
+
+                var form = $(this)[0];
+                var formData = new FormData(form);
+
+                $.ajax({
+                    url: '/background_simulate_n_steps',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (data) {
+                        if(data== "NONE") {
+                            window.alert("No value inserted as input.");
+                        }
+                        else if(data== "ZERO") {
+                            window.alert("Zero steps is not a valid input.");
+                        }
+                        else {
+                            console.log(data);
+                            change_color_n(data[0]);
+                            document.getElementById('mySelect').options.length = 0;
+                            var parsed_exp_transitions = data[1][0];
+                            for (var exp_transition in parsed_exp_transitions) {
+                                 $('<option value="'+ exp_transition +'">' + exp_transition + '</option>').appendTo('#mySelect');
+                            }
+                            var parsed_imm_transitions = data[1][1];
+                            for (var imm_transition in parsed_imm_transitions) {
+                                 $('<option value="'+ imm_transition +'">' + imm_transition + '</option>').appendTo('#mySelect');
+                            }
+                        }
+                    }
+                });
               });
 
               $('a#reset').bind('click', function() {
@@ -337,34 +395,6 @@
                     }
                 });
               });
-
-              $('#nStepsForm').on('submit', function (e) {
-                e.preventDefault();
-
-                var form = $(this)[0];
-                var formData = new FormData(form);
-
-                $.ajax({
-                    url: '/background_simulate_n_steps',
-                    method: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function (data) {
-                        if(data== "NONE") {
-                            window.alert("No value inserted as input.");
-                        }
-                        else if(data== "ZERO") {
-                            window.alert("Zero steps is not a valid input.");
-                        }
-                        else {
-                            change_color(data[1], data[0]);
-                        }
-                    }
-                });
-              });
-
-
             });
     </script>
 

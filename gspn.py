@@ -564,6 +564,7 @@ class GSPN(object):
 
     def simulate(self, nsteps=1, reporting_step=1, simulate_wait=False):
         markings = []
+        fired_transitions = []
         fired_transition = 0
         for step in range(nsteps):
             if step % reporting_step == 0:
@@ -586,10 +587,12 @@ class GSPN(object):
                     # Fire transition
                     fired_transition = firing_transition
                     self.fire_transition(firing_transition)
+                    fired_transitions.append(firing_transition)
                 else:
                     # Fire the only available immediate transition
                     fired_transition = list(random_switch.keys())[0]
                     self.fire_transition(fired_transition)
+                    fired_transitions.append(fired_transition)
             elif enabled_exp_transitions:
                 if len(enabled_exp_transitions) > 1:
                     if simulate_wait:
@@ -618,6 +621,7 @@ class GSPN(object):
                     # Fire transition
                     fired_transition = firing_transition
                     self.fire_transition(firing_transition)
+                    fired_transitions.append(firing_transition)
                 else:
                     if simulate_wait:
                         wait = np.random.exponential(scale=(1.0 / list(enabled_exp_transitions.values())[0]), size=None)
@@ -626,9 +630,11 @@ class GSPN(object):
                     # Fire transition
                     fired_transition = list(enabled_exp_transitions.keys())[0]
                     self.fire_transition(fired_transition)
+                    fired_transitions.append(fired_transition)
 
         full_list = list(markings)
-        full_list.append(fired_transition)
+        full_list.append(self.get_current_marking())
+        full_list.append(fired_transitions)
         return full_list
 
     def get_state_from_marking(self, marking, states_to_marking):
@@ -828,7 +834,6 @@ class GSPN(object):
 
                 if add_state:
                     states_already_considered.append(tangible_init_state)
-
         return throughput_rate
 
     def prob_of_n_tokens(self, place, ntokens):
